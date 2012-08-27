@@ -1,0 +1,188 @@
+#! /usr/bin/python
+
+import os
+import ldap
+import subprocess
+from optparse import OptionParser
+import tempfile
+
+from ldapConf import *
+from ldapUtil import *
+
+
+####################################################################################
+# global constants
+####################################################################################
+version="%prog: v0.93 (2011-Nov-27)"
+modifiedBy="Garry Thuna"
+
+
+###################################################################################
+# parse command line options
+###################################################################################
+usage = "usage: %prog [options] [uid1 [[uid2] [[...]]]" 
+description = "Ensures that the user's home directory exists, "  +\
+              "that it has correct user, group and acl, and "  +\
+              "and sets up a subdirectory of symlinks for any workspace "  +\
+              "that the user has access to"
+parser = OptionParser(usage=usage, version=version, description=description)
+parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
+                        help="show changes made to file system [default: %default]")
+(options, args) = parser.parse_args()
+
+
+####################################################################################
+# bind to the ldap server 
+#     do the preliminary procssing of users and groups
+#     do the preliminary procssing of workspaces
+####################################################################################
+con = ldap.initialize(BIND_URI)
+con.simple_bind_s(BIND_DN, BIND_PW)
+
+groups,                \
+    users,             \
+     gnum2idx,         \
+     gid2idx,          \
+     uid2idx,          \
+     belongsTo,        \
+    workspaces,        \
+     gtwsName2ws,       \
+     gtwsName2path,     \
+     gnum2gtwsName,     \
+    servers,           \
+     gtsName2server  = preProcessLdapObjects(con)
+
+con.unbind_s()
+
+
+####################################################################################
+# set up the homes
+####################################################################################
+smbConf = ''  #string in which to accumulate the samba share definitions
+for u in users:
+    dn, attrs = u
+    if len(args) > 0 and attrs['uid'][0].lower() not in [a.lower() for a in args]:
+        continue
+    if options.verbose: 
+        print 'processing user:',
+        print attrs['uid'][0] \
+            + '  (' + attrs['uidNumber'][0] + ')  ' \
+            + 'dn: ' + dn
+
+    # see if user's home is on this server
+    if 'sambaHomePath' not in attrs:
+        print >> sys.stderr, '  *** Error no "sambaHomePath" set for user: ' + attrs['uid'][0]
+        continue
+    if attrs['sambaHomePath'][0].find(SERVER_SHORT_NAME) < 0:
+        continue
+
+    # create user's directory
+    userDir = os.path.join(SAMBA_HOME, attrs['uid'][0])
+    if options.verbose: 
+        print '    ensuring user directory exists:       ' + userDir
+    p = subprocess.Popen([ "mkdir", "-p", userDir ]); p.wait()
+    if p.returncode:
+        print >> sys.stderr, '  *** Error (re)creating directory: ' + userDir
+    if options.verbose: 
+        print '    setting ownership and permissions on: ' + userDir
+    setOwnerGroupPerms(userDir, attrs['uidNumber'][0], 'anonymous', 0500)
+
+    # create user's home directory
+    homeDir = os.path.join(userDir, SAMBA_USER_HOME)
+    if options.verbose: 
+        print '    ensuring user home directory exists:       ' + homeDir
+    p = subprocess.Popen([ "mkdir", "-p", homeDir ]); p.wait()
+    if p.returncode:
+        print >> sys.stderr, '  *** Error (re)creating directory: ' + homeDir
+    if options.verbose: 
+        print '    setting ownership and permissions on: ' + homeDir
+    setOwnerGroupPerms(homeDir, attrs['uidNumber'][0], 'anonymous', 02700)
+
+    # determine the unique set of workspaces that the user can access
+    gtwsNameList = list()
+    for gnum in belongsTo[ attrs['uid'][0] ]:      #groups that user belongs to
+        if gnum in gnum2gtwsName:
+            for gtwsName in gnum2gtwsName[gnum]:     #workspaces accessible by group
+                if gtwsName not in gtwsNameList:
+                    gtwsNameList.append(gtwsName)
+
+    # setup the linkFiles to accessible workareas
+    linkFiles = list()
+    for gtwsName in gtwsNameList:
+        gtsName, path = gtwsName2path[gtwsName]
+        serverAttrs = gtsName2server[gtsName][1]
+        serverDir = os.path.join(userDir, serverAttrs['gtsNickname'][0])
+        if not os.path.exists(serverDir):
+            os.mkdir(serverDir)
+        if options.verbose: 
+            print '    setting ownership and permissions on: ' + serverDir
+        setOwnerGroupPerms(serverDir, attrs['uidNumber'][0], attrs['gidNumber'][0], 0500)
+
+        # write out the linkFile/URL
+        wsDn, wsAttr = gtwsName2ws[gtwsName] 
+        linkFile = os.path.join(serverDir, wsAttr['gtwsName'][0] + '.url')
+        if options.verbose: 
+            print '    writing link file: ' + linkFile
+        with open(linkFile, 'w') as f:
+            f.write("[InternetShortcut]" + "\r\n")
+            f.write("URL=file://" + serverAttrs['gtsFQDN'][0] + "/" + wsAttr['gtwsName'][0] + "\r\n")
+        setOwnerGroupPerms(linkFile, attrs['uidNumber'][0], attrs['gidNumber'][0], 0400)
+        linkFiles.append(linkFile)
+
+    # remove links no longer available
+    if options.verbose: 
+        print '    removing dead/revoked links'
+    for dirpath, dirnames, filenames in os.walk(userDir):
+        if dirpath == userDir:
+            if SAMBA_USER_HOME in dirnames:
+                dirnames.remove(SAMBA_USER_HOME)
+            continue
+        for f in filenames:
+            if f.endswith('.url'):
+                linkName = os.path.join(dirpath, f)  #reconstruct full linkfile path
+                if linkName not in linkFiles:
+                    if options.verbose: 
+                        print '        removing link ' + linkName
+                    os.unlink(os.path.join(dirpath, f))
+
+    # cleanup: if subdir is empty then remove it 
+    if options.verbose: 
+        print '    cleanup links'
+    for dirpath, dirnames, filenames in os.walk(userDir):
+        if dirpath == userDir:
+            if SAMBA_USER_HOME in dirnames:
+                dirnames.remove(SAMBA_USER_HOME)
+            continue
+        if len(dirnames) + len(filenames) == 0:
+            if options.verbose: 
+                print '        deleting empty server folder:  ' + dirpath
+            os.rmdir(dirpath)
+
+#    # setup the static linkFiles
+#    staticDir = os.path.join(userDir, 'links')
+#    if not os.path.exists(staticDir):
+#        os.mkdir(staticDir)
+#    if options.verbose: 
+#        print '    setting ownership and permissions on: ' + staticDir
+#    setOwnerGroupPerms(staticDir, attrs['uidNumber'][0], attrs['gidNumber'][0], 0500)
+#
+#    # write out the static linkFile/URL
+#    linkFile = os.path.join(staticDir, 'changePassword.url')
+#    if options.verbose: 
+#        print '    writing link file: ' + linkFile
+#    with open(linkFile, 'w') as f:
+#        f.write("[InternetShortcut]" + "\r\n")
+#        f.write("URL=https://dirSrv1.yyc.planetFoods.ca/changePassword.html" + "\r\n")
+#    setOwnerGroupPerms(linkFile, attrs['uidNumber'][0], attrs['gidNumber'][0], 0400)
+
+    # accumulate the share definition in a string
+    smbConf = smbConf + SAMBA_HOME_TEMPLATE.format(
+            shareName    = attrs['uid'][0],
+            shareComment = 'home directory of ' + attrs['cn'][0],
+            sharePath    = userDir
+        )
+
+# write out the smb conf for homes
+with open(os.path.join(SAMBA_ROOT, SAMBA_HOME_CONF), 'w') as f:
+    f.write(smbConf)
+

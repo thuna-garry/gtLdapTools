@@ -1,0 +1,143 @@
+#! /usr/bin/python
+
+import os
+import ldap
+import subprocess
+from optparse import OptionParser
+import tempfile
+
+from ldapConf import *
+from ldapUtil import *
+
+
+####################################################################################
+# global constants
+####################################################################################
+version="%prog: v0.85 (2011-Nov-27)"
+modifiedBy="Garry Thuna"
+
+
+###################################################################################
+# parse command line options
+###################################################################################
+usage = "usage: %prog [options] [aws1 [[aws2] [[...]]]" 
+description = "Ensures that the workspace directory exists, "  +\
+              "that it has correct user, group and acl"
+parser = OptionParser(usage=usage, version=version, description=description)
+parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
+                        help="show changes made to file system [default: %default]")
+(options, args) = parser.parse_args()
+
+
+####################################################################################
+# bind to the ldap server
+#     do the preliminary procssing of users and groups
+#     do the preliminary procssing of workspaces
+####################################################################################
+con = ldap.initialize(BIND_URI)
+con.simple_bind_s(BIND_DN, BIND_PW)
+
+groups,                \
+    users,             \
+     gnum2idx,         \
+     gid2idx,          \
+     uid2idx,          \
+     belongsTo,        \
+    workspaces,        \
+     gtwsName2ws,       \
+     gtwsName2path,     \
+     gnum2gtwsName,     \
+    servers,           \
+     gtsName2server  = preProcessLdapObjects(con)
+
+con.unbind_s()
+
+
+####################################################################################
+# set up the workspaces
+####################################################################################
+smbConf = ''  #string in which to accumulate the samba share definitions
+for ws in workspaces:
+    dn, attrs = ws
+    if len(args) > 0 and attrs['gtwsName'][0].lower() not in [a.lower() for a in args]:
+        continue
+
+    server, path = gtwsName2path[getQualAwsName(ws)]
+    if server != SERVER_SHORT_NAME:
+        continue  #foreign ws
+
+    if options.verbose: 
+        print 'processing workspace:',
+        print getQualAwsName(ws) \
+            + '    dn: ' + dn
+
+    wsDir = os.path.join(SAMBA_WORKSPACE, server, path)
+
+    # create any needed directories
+    if options.verbose: 
+        print '    ensuring workspace directory exists:  ' + wsDir
+    p = subprocess.Popen([ "mkdir", "-p", wsDir ]); p.wait()
+    if p.returncode:
+        print >> sys.stderr, '  *** Error (re)creating directory: ' + wsDir
+
+    #correct permissions
+    if options.verbose:
+        print '    setting ownership and permissions on: ' + wsDir
+    wsDir = os.path.join(SAMBA_WORKSPACE)
+    setOwnerGroupPerms(wsDir, 'root', 'staff', 00710)
+    wsDir = os.path.join(SAMBA_WORKSPACE, server)
+    setOwnerGroupPerms(wsDir, 'root', 'staff', 00710)
+    wsDir = os.path.join(SAMBA_WORKSPACE, server, path)
+    setOwnerGroupPerms(wsDir, attrs['gtwsOwnerUid'][0], 'anonymous', 02770)
+
+    # for the wsDir: assemble the acls in a temp file
+    fd, fname = tempfile.mkstemp()
+    with open(fname, 'w') as f:
+        f.write( 'user::rwX\n'          )
+        f.write( 'group::---\n'         )
+        f.write( 'other::---\n'         )
+        f.write( 'default:user::rwX\n'  )
+        f.write( 'default:group::---\n' )
+        f.write( 'default:other::---\n' )
+        for acl in attrs['gtwsACL']:
+            f.write( acl + '\n' )
+            f.write( 'default:' + acl + '\n' )
+    os.close(fd)
+
+    # for the wsDir: apply the acls
+    if options.verbose: 
+        print '    applying ACLs to workspace:           ' + wsDir
+    p = subprocess.Popen([ "setfacl", "-R", "--set-file", fname, wsDir ]); p.wait()
+    if p.returncode:
+        print >> sys.stderr, '  *** Error applying ACLs: ' + wsDir
+
+    # for the wsDir: cleanup temp file
+    os.unlink(fname)
+
+    # for each of the parent dirs of wsDir:
+    #    provide 'x' attribute so those with access to wsDir can traverse to it
+    parent = path
+    while True:
+        parent = os.path.split(parent)[0]
+        if not parent:
+            break  #no more parents
+        pDir = os.path.join(SAMBA_WORKSPACE, server, parent)
+        for acl in attrs['gtwsACL']:
+            if options.verbose: 
+                print '    applying ACL({0}) to parent:   '.format(acl[:-4]) + pDir
+            exe = os.path.join( os.path.split(sys.argv[0])[0], "setfacl_X_onDir.sh" )
+            p = subprocess.Popen([ exe, pDir, acl[:-4] ]); p.wait()
+            if p.returncode:
+                print >> sys.stderr, '  *** Error applying ACLs: ' + pDir
+    
+    # accumulate the share definition in a string
+    smbConf = smbConf + SAMBA_WORKSPACE_TEMPLATE.format(
+            shareName    = attrs['gtwsName'][0],
+            shareComment = attrs.get('description', ['no description supplied'])[0],
+            sharePath    = wsDir
+        )
+ 
+# write out the smb conf for workspaces
+with open(os.path.join(SAMBA_ROOT, SAMBA_WORKSPACE_CONF), 'w') as f:
+    f.write(smbConf)
+

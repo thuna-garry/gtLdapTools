@@ -1,0 +1,70 @@
+#! /usr/bin/python
+
+import sys
+import ldap
+from ldapConf import *
+from optparse import OptionParser
+
+from ldapConf import *
+from ldapUtil import *
+
+
+####################################################################################
+# global constants
+####################################################################################
+version="%prog: v0.82 (2011-Nov-27)"
+modifiedBy="Garry Thuna"
+
+
+###################################################################################
+# parse command line options
+###################################################################################
+usage = "usage: %prog [options] [cn1 [[cn2] [[...]]]" 
+description = "Print the list of groups defined under " + BASE_DN
+parser = OptionParser(usage=usage, version=version, description=description)
+parser.add_option("-m", "--membership", action="store_true", dest="showMembership", default=False,
+                        help="show members within each group [default: %default]")
+parser.add_option("-s", "--simple", action="store_false", dest="showMembership",
+                        help="do not show group membership information in the output")
+(options, args) = parser.parse_args()
+
+
+####################################################################################
+# bind to the ldap server
+#     do the preliminary procssing of users and groups
+#     do the preliminary procssing of workspaces
+####################################################################################
+con = ldap.initialize(BIND_URI)
+con.simple_bind_s(BIND_DN, BIND_PW)
+
+groups,                \
+    users,             \
+     gnum2idx,         \
+     gid2idx,          \
+     uid2idx,          \
+     belongsTo,        \
+    workspaces,        \
+     gtwsName2ws,       \
+     gtwsName2path,     \
+     gnum2gtwsName,     \
+    servers,           \
+     gtsName2server  = preProcessLdapObjects(con)
+
+con.unbind_s()
+
+
+print '==============================================================='
+print '= Group list                                                  ='
+print '==============================================================='
+for g in groups:
+    if len(args) > 0 and g[1]['cn'][0].lower() not in [a.lower() for a in args]:
+        continue
+    print (g[1]['cn'][0] + ' (' + g[1]['gidNumber'][0] + ') ').ljust(35) \
+        + 'dn: ' + g[0]
+    if options.showMembership:
+        if 'memberUid' in g[1]:
+            for m in g[1]['memberUid']:
+                print ''.ljust(12) + 'member: ' + m + \
+                      ' (' + users[ uid2idx[ m ] ][1]['cn'][0] + ')'
+
+

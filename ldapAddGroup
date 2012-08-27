@@ -1,0 +1,159 @@
+#! /usr/bin/python
+
+import sys
+import ldap
+from ldapConf import *
+from optparse import OptionParser
+
+from ldapConf import *
+from ldapUtil import *
+
+
+####################################################################################
+# global constants
+####################################################################################
+version="%prog: v0.90 (2012-Mar-03)"
+modifiedBy="Garry Thuna"
+
+
+###################################################################################
+# parse command line options
+###################################################################################
+usage = "usage: %prog [options] [hostUri] [bindDN] [bindPW] [gid] [displayName] [description]" 
+description = "Create a group in " + BASE_DN
+parser = OptionParser(usage=usage, version=version, description=description)
+parser.add_option("--uri", action="store", type="string", dest="hostUri",
+                        help="LDAP Uniform Resource Identifier (eg. ldaps://ldapServer:port)")
+parser.add_option("--URI", action="store_true", dest="defaultUri", default=False,
+                        help="use MASTER_FQDN from ldapConf as the default server")
+parser.add_option("-d", action="store", type="string", dest="bindDN",     help="bind DN")
+parser.add_option("-w", action="store", type="string", dest="bindPass",   help="bind password")
+parser.add_option("-g", action="store", type="string", dest="gid",        help="gid (alphaNumeric)")
+parser.add_option("--display-name", action="store", type="string", dest="displayName", help="long name")
+parser.add_option("--desc",         action="store", type="string", dest="description",
+                        help="description / use / intent of group")
+(options, args) = parser.parse_args()
+
+
+####################################################################################
+# gather the user input
+####################################################################################
+pos = 0
+
+pos += 1
+if options.hostUri:
+    hostUri = options.hostUri
+    print "hostUri =", hostUri
+elif options.defaultUri:
+    hostUri = "ldaps://{0}".format(MASTER_FQDN)
+    print "hostUri =", hostUri
+elif len(args) >= pos:
+    hostUri = args[pos - 1]
+    print "hostUri =", hostUri
+else:
+    hostUri = "ldaps://{0}:636".format(MASTER_FQDN)
+    input = raw_input('host URI [{0}]: '.format(hostUri)).strip()
+    if len(input) != 0:
+        hostUri = input
+
+pos += 1
+if options.bindDN:
+    bindDN = options.bindDN
+    print "bindDN =", bindDN
+elif len(args) >= pos:
+    bindDN = args[pos - 1]
+    print "bindDN =", bindDN
+else:
+    bindDN = ""
+    input = raw_input('bind DN [{0}]: '.format(bindDN)).strip()
+    if len(input) != 0:
+        bindDN = input
+
+pos += 1
+if options.bindPass:
+    bindPass = options.bindPass
+elif len(args) >= pos:
+    bindPass = args[pos -1]
+else:
+    bindPass = raw_input('bind password: ')
+#print "bindPass =", bindPass
+
+pos += 1
+if options.gid:
+    gid = options.gid
+    print "gid =", gid
+elif len(args) >= pos:
+    gid = args[pos - 1]
+    print "gid =", gid
+else:
+    gid = ""
+    input = raw_input('gid []: ').strip()
+    if len(input) != 0:
+        gid = input
+
+pos += 1
+if options.displayName:
+    displayName = options.displayName
+    print "displayName =", displayName
+elif len(args) >= pos:
+    displayName = args[pos - 1]
+    print "displayName =", displayName
+else:
+    displayName = ""
+    input = raw_input('displayName []: ').strip()
+    if len(input) != 0:
+        displayName = input
+
+pos += 1
+if options.description:
+    description = options.description
+    print "description =", description
+elif len(args) >= pos:
+    description = args[pos - 1]
+    print "description =", description
+else:
+    description = ""
+    input = raw_input('description []: ').strip()
+    if len(input) != 0:
+        description = input
+
+
+####################################################################################
+# bind to the ldap server
+#     do the preliminary procssing of users and groups
+#     do the preliminary procssing of workspaces
+####################################################################################
+con = ldap.initialize(hostUri)
+con.simple_bind_s(bindDN, bindPass)
+
+groups,                \
+    users,             \
+     gnum2idx,         \
+     gid2idx,          \
+     uid2idx,          \
+     belongsTo,        \
+    workspaces,        \
+     gtwsName2ws,      \
+     gtwsName2path,    \
+     gnum2gtwsName,    \
+    servers,           \
+     gtsName2server  = preProcessLdapObjects(con)
+
+gidNumber = firstUnusedGidNumber(groups)
+
+# setup the entry's attributes
+dn = GROUP_DN_FMT.format(gid)
+ur = list()
+ur.append( ('objectClass', ['sambaGroupMapping', 'posixGroup']) )
+ur.append( ('cn',                   [gid])                                                      )  
+ur.append( ('gidNumber',            ['{0}'.format(gidNumber)])                                  )  
+ur.append( ('sambaGroupType',       ['2'])                                                      )  
+ur.append( ('sambaSID',             ['S-1-5-21-12345-1-{0}'.format(gidNumber * 2 + 1)])         ) 
+ur.append( ('displayName',          [displayName])                                              )
+ur.append( ('description',          [description])                                              )
+
+con.add_s(dn, ur)
+con.unbind_s()
+
+print
+print

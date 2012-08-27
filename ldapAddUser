@@ -1,0 +1,194 @@
+#! /usr/bin/python
+
+import sys
+import ldap
+from ldapConf import *
+from optparse import OptionParser
+
+from ldapConf import *
+from ldapUtil import *
+
+
+####################################################################################
+# global constants
+####################################################################################
+version="%prog: v0.90 (2012-Mar-03)"
+modifiedBy="Garry Thuna"
+
+
+###################################################################################
+# parse command line options
+###################################################################################
+usage = "usage: %prog [options] [hostUri] [bindDN] [bindPW] [fullName] [uid] [e-mail] [homeServer]" 
+description = "Create a user in " + BASE_DN
+parser = OptionParser(usage=usage, version=version, description=description)
+parser.add_option("--uri", action="store", type="string", dest="hostUri",
+                        help="LDAP Uniform Resource Identifier (eg. ldaps://ldapServer:port)")
+parser.add_option("--URI", action="store_true", dest="defaultUri", default=False,
+                        help="use MASTER_FQDN from ldapConf as the default server")
+parser.add_option("-d", action="store", type="string", dest="bindDN",     help="bind DN")
+parser.add_option("-w", action="store", type="string", dest="bindPass",   help="bind password")
+parser.add_option("-n", action="store", type="string", dest="fullName",   help="last, first")
+parser.add_option("-u", action="store", type="string", dest="uid",        help="email address")
+parser.add_option("-U", action="store_true", dest="defaultUid", default=False,
+                        help="use first letter of given name concatenated with last name")
+parser.add_option("-m", action="store", type="string", dest="email",      help="email address")
+parser.add_option("-s", action="store", type="string", dest="homeServer", help="server for user's home directory")
+parser.add_option("-S", action="store_true", dest="defaultHomeServer", default=False,
+                        help="use SERVER_SHORT_NAME from ldapConf as the default home server")
+(options, args) = parser.parse_args()
+
+
+####################################################################################
+# gather the user input
+####################################################################################
+pos = 0
+
+pos += 1
+if options.hostUri:
+    hostUri = options.hostUri
+    print "hostUri =", hostUri
+elif options.defaultUri:
+    hostUri = "ldaps://{0}".format(MASTER_FQDN)
+    print "hostUri =", hostUri
+elif len(args) >= pos:
+    hostUri = args[pos - 1]
+    print "hostUri =", hostUri
+else: 
+    hostUri = "ldaps://{0}:636".format(MASTER_FQDN)
+    input = raw_input('host URI [{0}]: '.format(hostUri)).strip()
+    if len(input) != 0:
+        hostUri = input
+
+pos += 1
+if options.bindDN:
+    bindDN = options.bindDN
+    print "bindDN =", bindDN
+elif len(args) >= pos:
+    bindDN = args[pos - 1]
+    print "bindDN =", bindDN
+else: 
+    bindDN = ""
+    input = raw_input('bind DN [{0}]: '.format(bindDN)).strip()
+    if len(input) != 0:
+        bindDN = input
+
+pos += 1
+if options.bindPass:
+    bindPass = options.bindPass
+elif len(args) >= pos:
+    bindPass = args[pos -1]
+else: 
+    bindPass = raw_input('bind password: ')
+#print "bindPass =", bindPass
+
+pos += 1
+if options.fullName:
+    fullName = options.fullName
+    print "fullName =", fullName
+elif len(args) >= pos:
+    fullName = args[pos - 1]
+    print "fullName =", fullName
+else: 
+    fullName = "Doe, John"
+    input = raw_input('fullName [{0}]: '.format(fullName)).strip()
+    if len(input) != 0:
+        fullName = input
+
+surName = fullName.split(',')[0].strip()
+givenNames = fullName.split(',')[1].strip().replace(' ', '_')
+print "surName =", surName
+print "givenNames =", givenNames
+
+pos += 1
+if options.uid:
+    uid = options.uid
+    print "uid =", uid
+elif len(args) >= pos:
+    uid = args[pos - 1]
+    print "uid =", uid
+else: 
+    uid = givenNames[0].lower() + surName.lower()
+    input = raw_input('uid [{0}]: '.format(uid)).replace(' ', '_').strip()
+    if len(input) != 0:
+        uid = input
+
+pos += 1
+if options.email:
+    mail = options.email
+    print "e-mail =", mail
+elif len(args) >= pos:
+    mail = args[pos - 1]
+    print "e-mail =", mail
+else: 
+    mail = '{0}.{1}@{2}'.format(givenNames.lower(), surName.lower(), MAIL_DOMAIN)  
+    input = raw_input('e-mail [{0}]: '.format(mail)).replace(' ', '_').strip()
+    if len(input) != 0:
+        mail = input
+
+pos += 1
+if options.homeServer:
+    homeServer = options.homeServer
+    print "homeServer = ", homeServer
+elif options.defaultHomeServer:
+    homeServer = SERVER_SHORT_NAME
+    print "homeServer = ", homeServer
+elif len(args) >= pos:
+    homeServer = args[pos - 1]
+    print "homeServer = ", homeServer
+else: 
+    homeServer = SERVER_SHORT_NAME
+    input = raw_input('homeServer [{0}]: '.format(homeServer)).replace(' ', '_').strip()
+    if len(input) != 0:
+        homeServer = input
+
+
+####################################################################################
+# bind to the ldap server
+#     do the preliminary procssing of users and groups
+#     do the preliminary procssing of workspaces
+####################################################################################
+con = ldap.initialize(hostUri)
+con.simple_bind_s(bindDN, bindPass)
+
+groups,                \
+    users,             \
+     gnum2idx,         \
+     gid2idx,          \
+     uid2idx,          \
+     belongsTo,        \
+    workspaces,        \
+     gtwsName2ws,      \
+     gtwsName2path,    \
+     gnum2gtwsName,    \
+    servers,           \
+     gtsName2server  = preProcessLdapObjects(con)
+
+uidNumber = firstUnusedUidNumber(users)
+
+# setup the entry's attributes
+dn = USER_DN_FMT.format(uid)
+ur = list()
+ur.append( ('objectClass', ['sambaSamAccount', 'posixAccount', 'person', 'organizationalPerson', 'inetOrgPerson']) )
+ur.append( ('uid',                  [uid])                                                      )
+ur.append( ('cn',                   [givenNames + ' ' + surName])                               )  
+ur.append( ('sn',                   [surName])                                                  )  
+ur.append( ('givenName',            [givenNames])                                               )  
+ur.append( ('mail',                 [mail])                                                     )  
+ur.append( ('uidNumber',            ['{0}'.format(uidNumber)])                                  )
+ur.append( ('sambaSID',             ['S-1-5-21-12345-1-{0}'.format(uidNumber * 2)])             ) 
+ur.append( ('loginShell',           ['/sbin/nologin'])                                          )
+ur.append( ('gidNumber',            ['6001'])                                                   )
+ur.append( ('homeDirectory',        ['_none_'])                                                 )
+ur.append( ('sambaAcctFlags',       ['[UX         ]'])                                          )
+ur.append( ('sambaHomePath',        ['\\\\{0}.{1}\{2}'.format(homeServer, DOMAIN, uid)])        )
+ur.append( ('sambaLMPassword',      ['change_me'])                                              )
+ur.append( ('sambaNTPassword',      ['8846f7eaee8fb117ad06bdd830b7586c'])                       )
+ur.append( ('sambaPrimaryGroupSID', ['S-1-5-21-12345-1-12003'])                                 )
+ur.append( ('userPassword',         ['e1NTSEF9NitmNjNMWW5Jb0J1Z214eUtaK2Q1NTVzNVVLMk5uY3k='])   )
+
+con.add_s(dn, ur)
+con.unbind_s()
+
+print 
+print

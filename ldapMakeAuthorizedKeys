@@ -1,0 +1,140 @@
+#! /usr/bin/python
+
+import os
+import sys
+import ldap
+import subprocess
+from optparse import OptionParser
+import tempfile
+
+from ldapConf import *
+from ldapUtil import *
+
+
+####################################################################################
+# global constants
+####################################################################################
+version="%prog: v0.81 (2011-Sep-05)"
+modifiedBy="Garry Thuna"
+
+
+####################################################################################
+# the ldap queries
+####################################################################################
+def querySshAccess(con):
+    baseDN = BASE_DN_SERVER
+    filter = '(objectClass=sshAccess)'
+    attrs  = [ 'ssh', 'sshHostAccountName', 'sshPubKey', 'sshPubKeyHolder', 'sshAuthKeyOptions' ]
+    qr = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
+    return qr
+
+def querySshPubKeyHolder(con):
+    baseDN = BASE_DN
+    filter = '(objectClass=sshPubKeyHolder)'
+    attrs  = [ 'sshPubKey' ]
+    qr = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
+    return qr
+
+
+###################################################################################
+# parse command line options
+###################################################################################
+usage = "usage: %prog [options]" 
+description = "Rebuilds authorized_key files from public keys stored in the directory"
+parser = OptionParser(usage=usage, version=version, description=description)
+parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
+                        help="show detailschanges made to file system [default: %default]")
+(options, args) = parser.parse_args()
+
+
+####################################################################################
+# bind to the ldap server 
+#     run the queries
+####################################################################################
+con = ldap.initialize(BIND_URI)
+con.simple_bind_s(BIND_DN, BIND_PW)
+qSsh = querySshAccess(con)
+qPkHolder = querySshPubKeyHolder(con)
+con.unbind_s()
+
+
+####################################################################################
+# collate all the key info for a given host account
+####################################################################################
+hostAccounts = {}   # hostaccountName: [(option, pubKey)]
+for r in qSsh:
+    print "server " + getDNattr(r[0], 'cn') + "  " + getDNattr(r[0], 'ssh')
+    uid = r[1]['sshHostAccountName'][0]
+    keylist = hostAccounts.get(uid, [])
+
+    opts = ""
+    if r[1].get('sshAuthKeyOptions', []):
+        opts = r[1].get('sshAuthKeyOptions', [])[0]
+    for pk in r[1].get('sshPubKey', []):
+        if options.verbose: 
+            print '    key:' + pk[:15] + '...' + pk[:-25]
+        keylist.append( (opts, pk) )
+    for holderRef in r[1].get('sshPubKeyHolder',[]):
+        if options.verbose: 
+            print '    ref: ' + holderRef
+        pkh = [p for p in qPkHolder if p[0] == holderRef]
+        if not pkh:
+            print >>sys.stderr, '    *** ERROR: reference to ' + holderRef + ' not found or not class sshPubKeyHolder.'
+            continue
+        for pk in pkh[0][1].get('sshPubKey', []):
+            if options.verbose: 
+                print '        key: ' + pk.split()[0] + ' ' \
+                                + ' ' + pk.split()[1][:25] + '...' + pk.split()[1][-25:] \
+                                + ' ' + ' '.join(pk.split()[2:])
+            keylist.append( (opts, pk) )
+    hostAccounts[uid] = keylist
+
+
+####################################################################################
+# write the authorized_keys files
+####################################################################################
+for ha in hostAccounts:
+    uid = ha
+    print 'creating authorized_keys file for user', uid
+      
+    #get the uid's home directory and group
+    p = subprocess.Popen([ "getent", "passwd", uid ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, errors = p.communicate()
+    if p.returncode:
+        print '*** ERROR: could not retrieve passwd entry for user'
+        continue
+
+    baseGroup = output.split(':')[3]
+    homeDir = output.split(':')[5]
+    sshDir = os.path.join(homeDir, '.ssh')
+
+    # create any needed directories
+    if options.verbose: 
+        print '    ensuring .ssh directory exists:  ' + sshDir
+    p = subprocess.Popen([ "mkdir", "-p", sshDir ]); p.wait()
+    if p.returncode:
+        print >> sys.stderr, '*** Error (re)creating directory: ' + sshDir
+
+    # set sshDir ownership permissions
+    if options.verbose: 
+        print '    setting .ssh directory permissions: '
+    os.chmod(sshDir, 0700)
+
+    # assemble the pub keys in the authorized_keys file
+    if options.verbose: 
+        print '    writing the authorized_keys file '
+    f = open( os.path.join(sshDir, 'authorized_keys'), 'w')
+    for opt,key in hostAccounts[ha]:
+        if opt:
+            f.write( opt + ' ' )
+        f.write( str(key) + '\n\n' )
+    f.close()
+
+    # set sshDir ownership
+    if options.verbose: 
+        print '    setting user/group ownership on directory: ' + sshDir
+    p = subprocess.Popen([ "chown", "-R", uid + ':' + baseGroup, homeDir ]); p.wait()
+    if p.returncode:
+        print >> sys.stderr, '*** Error setting directory ownership: ' + sshDir
+
+

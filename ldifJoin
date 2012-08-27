@@ -1,0 +1,20 @@
+#! /usr/bin/python
+
+#####################################################################
+# take an ldif as stdin and re-assemble continuation lines
+#####################################################################
+import sys
+
+firstLine = True
+for line in sys.stdin:
+    line = line[:-1]
+    if firstLine:
+        sys.stdout.write(line)
+        firstLine = False
+    elif len(line) > 0 and line[0] == ' ':
+        sys.stdout.write(line[1:])
+    else:
+        sys.stdout.write('\n')
+        sys.stdout.write(line)
+sys.stdout.write('\n')
+
