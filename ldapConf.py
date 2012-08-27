@@ -151,19 +151,21 @@ SAMBA_WORKSPACE_TEMPLATE = '''
 ####################################################################################
 import ldap
 
-#CACERTFILE='/tmp'  <-- directories don't seen to work
-#CACERTFILE='/tmp/planetFoods-cacert.pem'
+#-----------
+# TLS-related options have to be set globally since the TLS context is only initialized once
+#-----------
 
-# # TLS-related options have to be set globally since the TLS context is only initialized once
-# # Force cert validation
+#CACERTFILE = "/etc/openldap/cacerts/"                                 # directories don't seem to work
+#CACERTFILE = "/etc/openldap/cacerts/" + ORGANIZATION + "-cacert.pem"  # file contains all trusted CA certs
+
+# Force cert validation
 ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT,ldap.OPT_X_TLS_DEMAND)
-# # Set path name of file containing all trusted CA certificates
-# ldap.set_option(ldap.OPT_X_TLS_CACERTFILE,CACERTFILE)
+ldap.set_option(ldap.OPT_X_TLS_DEMAND, True)
 
-#ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, "/path/to/trustedcerts.pem")
-#ldap.set_option(ldap.OPT_X_TLS_CERTFILE, "/path/to/usercert.pem")
-#ldap.set_option(ldap.OPT_X_TLS_KEYFILE, "/path/to/user.key.pem")
-
+# Set path name of file containing all trusted CA certificates
+ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, "/etc/openldap/cacerts/" + ORGANIZATION + "-cacert.pem")
+ldap.set_option(ldap.OPT_X_TLS_CERTFILE,   "/etc/openldap/certs/" + SERVER_SHORT_NAME + "." + DOMAIN + "-cert.pem")
+ldap.set_option(ldap.OPT_X_TLS_KEYFILE,    "/etc/openldap/certs/" + SERVER_SHORT_NAME + "." + DOMAIN + "-key.pem")
 
 
 ####################################################################################

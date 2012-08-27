@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/sh
 
 ##################################################################
 # Script to check a cached copy of the ldap DIT against the current
@@ -6,12 +6,11 @@
 # overhead of running the full ldapMakeWorkspaces.
 # Intended to be run from a cron job or manually
 ##################################################################
-# modified on: 2012-01-14
+# modified on: 2012-07-08
 # modified by: Garry Thuna
 ##################################################################
 
-curDir=`dirname $0`
-gtToolDir=`readlink -f $0`
+gtToolDir=${0%/*}
 
 eval "`$gtToolDir/ldapConf.py \
         TMP_DIR   \
@@ -21,7 +20,7 @@ eval "`$gtToolDir/ldapConf.py \
         BASE_DN   \
      `"
 
-tmpDir=$TMP_DIR/`basename $0`.$$
+tmpDir=$TMP_DIR/${0##*/}.$$
 
 
 #############################################################################
@@ -32,9 +31,9 @@ ldapsearch                               \
     -H "$BIND_URI"                       \
     -D "$BIND_DN"                        \
     -w "$BIND_PW"                        \
-    -b 'ou=servers,o=planetFoods'        \
+    -b "ou=servers,$BASE_DN"             \
     -LL                                  \
-    '(objectClass=gtWorkspace)'       \
+    '(objectClass=gtWorkspace)'          \
     > "$tmpDir/workspace.ldif.new"
 
 
@@ -44,7 +43,7 @@ ldapsearch                               \
 touch "$tmpDir/workspace.ldif"
 diffs=`diff "$tmpDir/workspace.ldif" "$tmpDir/workspace.ldif.new"`
 if [ -n "$diffs" ]; then
-    `dirname $0`/ldapMakeWorkspaces $*
+    $gtToolDir/ldapMakeWorkspaces $*
 fi
 
 

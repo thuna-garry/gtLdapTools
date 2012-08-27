@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 
 cmd="./ldapAddGroup --URI -d uid=gthuna,ou=users,cn=directoryManagement -w password"
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 ##################################################################
 # Copy the slapd conf files from a master server and deploy
@@ -10,8 +10,7 @@
 # modified by: Garry Thuna
 ##################################################################
 
-curDir=`dirname $0`
-gtToolDir=`readlink -f $0`
+gtToolDir=${0%/*}
 
 eval "`$gtToolDir/ldapConf.py \
         MASTER_FQDN    \
@@ -19,7 +18,7 @@ eval "`$gtToolDir/ldapConf.py \
         TMP_DIR        \
      `"
 
-tmpDir=$TMP_DIR/`basename $0`.$$
+tmpDir=$TMP_DIR/${0##*/}.$$
 confDir=$OPENLDAP_DIR/convert
 schemaDir=$OPENLDAP_DIR/schema
 
@@ -39,15 +38,15 @@ for f in $tmpDir.1/*; do
     fi
     cat $f                         |\
         sed 's/write$/read/i'      |\
-        cat > $tmpDir.2/`basename $f`
+        cat > $tmpDir.2/${f##*/}
 done
 
 # see if new files are different than current
 foundDiff=""
 for f in $tmpDir.2/*; do
-    foundDiff=`diff -q $f $confDir/$(basename $f)`
+    foundDiff=`diff -q $f $confDir/${f##*/}`
     if [ -n "$foundDiff" ]; then
-        echo "diff found in file: $confDir/$(basename $f)"
+        echo "diff found in file: $confDir/${f##*/}"
         break
     fi
 done
@@ -68,7 +67,7 @@ rsync -av --progress $MASTER_FQDN:$schemaDir/ $tmpDir.1/  >/dev/null
 
 # see if new files are different than current
 for f in $tmpDir.1/*; do
-    foundDiff=`diff -q $f $schemaDir/$(basename $f)`
+    foundDiff=`diff -q $f $schemaDir/${f##*/}`
     if [ -n "$foundDiff" ]; then
         break
     fi
@@ -77,9 +76,9 @@ done
 # see if new files are different than current
 foundDiff=""
 for f in $tmpDir.1/*; do
-    foundDiff=`diff $f $schemaDir/$(basename $f)`
+    foundDiff=`diff $f $schemaDir/${f##*/}`
     if [ -n "$foundDiff" ]; then
-        echo "diff found in file: $schemaDir/$(basename $f)"
+        echo "diff found in file: $schemaDir/${f##*/}"
         break
     fi
 done

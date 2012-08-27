@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/sh
 
 ##################################################################
 # a utility script to set the acl execute permission on a particluar
@@ -9,16 +9,17 @@
 ##################################################################
 
 # used by ldapMakeWorkspace
-#  $1 the directory to which the ACL is to be applied
-#  $2 the acl without permissions  (eg group:gname)
-dir="$1"
-acl="$2"       
+acl="$1"     # the acl without permissions  (eg group:gname)
+dir="$2"     # the directory to which the ACL is to be applied
 
-curAcl=`getfacl "$dir" 2>/dev/null | grep "^$acl"`
-if [[ -n "$curAcl" ]]; then
-    acl=`echo "$curAcl" | sed 's/.$/X/'`
+curAcl=`getfacl "$dir" 2>/dev/null | grep "^$acl"`                #get the current ACL if it exists
+curAcl=`echo "$curAcl" | sed -e 's/#.*$//' -e 's/[ 	]*$//'`   #remove any trailing comment or whitespace
+if [ -n "$curAcl" ]; then
+    newAcl=`echo "$curAcl" | sed 's/.$/x/'`
+    setfacl -x "$acl":   "$dir"
+    setfacl -m "$newAcl" "$dir"
 else
-    acl=`echo "${acl}:--X" | sed 's/::/:/'`
+    newAcl=`echo "${acl}:--x" | sed 's/::/:/'`
+    setfacl -m "$newAcl" "$dir"
 fi
-setfacl -m "$acl" "$dir"
 
