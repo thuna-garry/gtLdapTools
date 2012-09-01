@@ -59,21 +59,31 @@ con.unbind_s()
 smbConf = ''  #string in which to accumulate the samba share definitions
 for ws in workspaces:
     dn, attrs = ws
-    if len(args) > 0 and attrs['gtwsName'][0].lower() not in [a.lower() for a in args]:
-        continue
 
+    # is the workspace located on this server
     server, path = gtwsName2path[getQualAwsName(ws)]
     if server != SERVER_SHORT_NAME:
         continue  #foreign ws
+
+    # accumulate the share definition in a string
+    wsDir = os.path.join(SAMBA_WORKSPACE, server, path)
+    smbConf = smbConf + SAMBA_WORKSPACE_TEMPLATE.format(
+            shareName    = attrs['gtwsName'][0],
+            shareComment = attrs.get('description', ['no description supplied'])[0],
+            sharePath    = wsDir
+        )
+
+    # were specific workspaces specified on the command line
+    if len(args) > 0 and attrs['gtwsName'][0].lower() not in [a.lower() for a in args]:
+        continue
 
     if options.verbose: 
         print 'processing workspace:',
         print getQualAwsName(ws) \
             + '    dn: ' + dn
 
-    wsDir = os.path.join(SAMBA_WORKSPACE, server, path)
-
     # create any needed directories
+    wsDir = os.path.join(SAMBA_WORKSPACE, server, path)
     if options.verbose: 
         print '    ensuring workspace directory exists:  ' + wsDir
     p = subprocess.Popen([ "mkdir", "-p", wsDir ]); p.wait()
@@ -93,9 +103,11 @@ for ws in workspaces:
     # for the wsDir: assemble the acls in a temp file
     fd, fname = tempfile.mkstemp()
     with open(fname, 'w') as f:
+#        f.write( 'mask::rwx\n'          )   #needed on BSD
         f.write( 'user::rwX\n'          )
         f.write( 'group::---\n'         )
         f.write( 'other::---\n'         )
+#        f.write( 'default:mask::rwx\n'  )   #needed on BSD
         f.write( 'default:user::rwX\n'  )
         f.write( 'default:group::---\n' )
         f.write( 'default:other::---\n' )
@@ -127,19 +139,13 @@ for ws in workspaces:
             exe = os.path.join( os.path.split(sys.argv[0])[0], "setfacl_X_onDir.sh" )
             if options.verbose: 
                 print '    applying ACL({0}) to parent:   '.format(acl[:-4]) + pDir
-            p = subprocess.Popen([ exe, acl[:-4], pDir ]); p.wait()
+                p = subprocess.Popen([ exe, acl[:-4], pDir ]); p.wait()
             else:
                 with open('/dev/null', 'w') as f:
                     p = subprocess.Popen([ exe, acl[:-4], pDir ], stdout=f); p.wait()
             if p.returncode:
                 print >> sys.stderr, '  *** Error applying ACLs: ' + pDir
     
-    # accumulate the share definition in a string
-    smbConf = smbConf + SAMBA_WORKSPACE_TEMPLATE.format(
-            shareName    = attrs['gtwsName'][0],
-            shareComment = attrs.get('description', ['no description supplied'])[0],
-            sharePath    = wsDir
-        )
  
 # write out the smb conf for workspaces
 with open(os.path.join(SAMBA_ROOT, SAMBA_WORKSPACE_CONF), 'w') as f:

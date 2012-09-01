@@ -2,9 +2,7 @@
 
 import sys
 import ldap
-from ldapConf import *
 from optparse import OptionParser
-
 from ldapConf import *
 from ldapUtil import *
 
