@@ -46,9 +46,9 @@ groups,                \
      uid2idx,          \
      belongsTo,        \
     workspaces,        \
-     gtwsName2ws,       \
-     gtwsName2path,     \
-     gnum2gtwsName,     \
+     gtwsName2ws,      \
+     gtwsName2path,    \
+     gnum2gtwsName,    \
     servers,           \
      gtsName2server  = preProcessLdapObjects(con)
 
@@ -61,20 +61,31 @@ con.unbind_s()
 smbConf = ''  #string in which to accumulate the samba share definitions
 for u in users:
     dn, attrs = u
-    if len(args) > 0 and attrs['uid'][0].lower() not in [a.lower() for a in args]:
-        continue
-    if options.verbose: 
-        print 'processing user:',
-        print attrs['uid'][0] \
-            + '  (' + attrs['uidNumber'][0] + ')  ' \
-            + 'dn: ' + dn
 
-    # see if user's home is on this server
+    # is the user's home is on this server
     if 'sambaHomePath' not in attrs:
         print >> sys.stderr, '  *** Error no "sambaHomePath" set for user: ' + attrs['uid'][0]
         continue
     if attrs['sambaHomePath'][0].lower().find(SERVER_SHORT_NAME.lower()) < 0:
         continue
+
+    # accumulate the share definition in a string
+    userDir = os.path.join(SAMBA_HOME, attrs['uid'][0])
+    smbConf = smbConf + SAMBA_HOME_TEMPLATE.format(
+            shareName    = attrs['uid'][0],
+            shareComment = 'home directory of ' + attrs['cn'][0],
+            sharePath    = userDir
+        )
+
+    # were specific workspaces specified on the command line
+    if len(args) > 0 and attrs['uid'][0].lower() not in [a.lower() for a in args]:
+        continue
+
+    if options.verbose: 
+        print 'processing user:',
+        print attrs['uid'][0] \
+            + '  (' + attrs['uidNumber'][0] + ')  ' \
+            + 'dn: ' + dn
 
     # create user's directory
     userDir = os.path.join(SAMBA_HOME, attrs['uid'][0])
@@ -87,7 +98,7 @@ for u in users:
         print '    setting ownership and permissions on: ' + userDir
     setOwnerGroupPerms(userDir, attrs['uidNumber'][0], 'anonymous', 0500)
 
-    # create user's home directory
+    # create user's home/personal directory
     homeDir = os.path.join(userDir, SAMBA_USER_HOME)
     if options.verbose: 
         print '    ensuring user home directory exists:       ' + homeDir
@@ -99,17 +110,21 @@ for u in users:
     setOwnerGroupPerms(homeDir, attrs['uidNumber'][0], 'anonymous', 02700)
 
     # determine the unique set of workspaces that the user can access
-    gtwsNameList = list()
+    accessibleWsNames= list()
     for gnum in belongsTo[ attrs['uid'][0] ]:      #groups that user belongs to
         if gnum in gnum2gtwsName:
             for gtwsName in gnum2gtwsName[gnum]:     #workspaces accessible by group
-                if gtwsName not in gtwsNameList:
-                    gtwsNameList.append(gtwsName)
+                if gtwsName not in accessibleWsNames:
+                    accessibleWsNames.append(gtwsName)
 
-    # setup the linkFiles to accessible workareas
+    # modify the accessbileWsNames so that we also have the server and path
+    # and then sort by the server + path
+    accessibles = [ (x,) + gtwsName2path[x] for x in accessibleWsNames ]
+    accessibles.sort(key=lambda x: x[1]+x[2])
+
+    # setup the linkFiles to accessible workspaces
     linkFiles = list()
-    for gtwsName in gtwsNameList:
-        gtsName, path = gtwsName2path[gtwsName]
+    for gtwsName, gtsName, path in accessibles:
         serverAttrs = gtsName2server[gtsName][1]
         serverDir = os.path.join(userDir, serverAttrs['gtsNickname'][0])
         if not os.path.exists(serverDir):
@@ -174,14 +189,6 @@ for u in users:
 #        f.write("[InternetShortcut]" + "\r\n")
 #        f.write("URL=https://dirsrv1peg.yyc.avmaxgroup.com/changePassword.html" + "\r\n")
 #    setOwnerGroupPerms(linkFile, attrs['uidNumber'][0], attrs['gidNumber'][0], 0400)
-
-#todo: this wont work if specific users were set on cmdline
-    # accumulate the share definition in a string
-    smbConf = smbConf + SAMBA_HOME_TEMPLATE.format(
-            shareName    = attrs['uid'][0],
-            shareComment = 'home directory of ' + attrs['cn'][0],
-            sharePath    = userDir
-        )
 
 # write out the smb conf for homes
 with open(os.path.join(SAMBA_ROOT, SAMBA_HOME_CONF), 'w') as f:

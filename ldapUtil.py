@@ -46,8 +46,7 @@ def setOwnerGroupPerms(path, owner, group, perms):
 ###################################################################################
 def getQualGtwsName(gtwsRec):
     dn, attrs = gtwsRec
-    return os.path.join( getDNattr(dn, 'gtsName'),
-                         attrs['gtwsName'][0] )
+    return getDNattr(dn, 'gtsName') + ':' +  attrs['gtwsName'][0] 
 
 
 ###################################################################################
@@ -222,12 +221,12 @@ def preProcessLdapObjects(con):
     for i in xrange(len(workspaces)):
         ws = workspaces[i]; dn, attrs = ws
         qualGtwsName = getQualGtwsName(ws)
-        gtwsName2path[qualGtwsName] = ( qualGtwsName.split('/')[0], attrs['gtwsRelativePath'][0] )
+        gtwsName2path[qualGtwsName] = ( qualGtwsName.split(':')[0], attrs['gtwsRelativePath'][0] )
         for j in xrange(i-1, 0-1, -1):
             pp = workspaces[j]; ppdn, ppattrs = pp       #pp: possibleParent
             ppQualGtwsName = getQualGtwsName(pp)
             if dn.lower().endswith(ppdn.lower()):
-                gtwsName2path[qualGtwsName] = ( qualGtwsName.split('/')[0],
+                gtwsName2path[qualGtwsName] = ( qualGtwsName.split(':')[0],
                                               os.path.join( gtwsName2path[ppQualGtwsName][1] ,
                                                             gtwsName2path[qualGtwsName][1]   ) )
                 break
@@ -309,7 +308,6 @@ def main():
         servers,           \
          gtsName2server  = preProcessLdapObjects(con)
     con.unbind_s()
-
 
 if __name__ == "__main__":
     sys.exit(main())

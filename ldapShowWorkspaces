@@ -46,9 +46,9 @@ groups,                \
      uid2idx,          \
      belongsTo,        \
     workspaces,        \
-     gtwsName2ws,       \
-     gtwsName2path,     \
-     gnum2gtwsName,     \
+     gtwsName2ws,      \
+     gtwsName2path,    \
+     gnum2gtwsName,    \
     servers,           \
      gtsName2server  = preProcessLdapObjects(con)
 
