@@ -12,7 +12,7 @@ from ldapConf import *
 ####################################################################################
 # global constants
 ####################################################################################
-version="%prog: v0.90 (2012-Mar-03)"
+version="%prog: 2012-09-03"
 modifiedBy="Garry Thuna"
 
 
@@ -44,8 +44,8 @@ def setOwnerGroupPerms(path, owner, group, perms):
 # utility:  derive the qualified gtWorkspaceName <gtsName>/<gtwsName>
 #           rec must be of objectClass=gtWorkspace
 ###################################################################################
-def getQualAwsName(awsRec):
-    dn, attrs = awsRec
+def getQualGtwsName(gtwsRec):
+    dn, attrs = gtwsRec
     return os.path.join( getDNattr(dn, 'gtsName'),
                          attrs['gtwsName'][0] )
 
@@ -54,7 +54,7 @@ def getQualAwsName(awsRec):
 # utility:  convert the zipped linked file contents of gtwsLinkFile attributes
 #           to unzipped format
 ###################################################################################
-def unzipAwsLinkFile(rec):
+def unzipGtwsLinkFile(rec):
     dn, attrs = rec
     if 'gtwsLinkFile' in attrs:
         # write the attribute contents (the zipfile) out to a temp file
@@ -214,25 +214,25 @@ def preProcessLdapObjects(con):
     # unzip any gtwsLinkFile attributes
     gtwsName2ws = dict()
     for ws in workspaces:
-        gtwsName2ws[getQualAwsName(ws)] = ws
-        unzipAwsLinkFile(ws)
+        gtwsName2ws[getQualGtwsName(ws)] = ws
+        unzipGtwsLinkFile(ws)
 
     # build a name to path mapping, where path will be a (dn, relativePath) tuple
     gtwsName2path = dict()
     for i in xrange(len(workspaces)):
         ws = workspaces[i]; dn, attrs = ws
-        qualAwsName = getQualAwsName(ws)
-        gtwsName2path[qualAwsName] = ( qualAwsName.split('/')[0], attrs['gtwsRelativePath'][0] )
+        qualGtwsName = getQualGtwsName(ws)
+        gtwsName2path[qualGtwsName] = ( qualGtwsName.split('/')[0], attrs['gtwsRelativePath'][0] )
         for j in xrange(i-1, 0-1, -1):
             pp = workspaces[j]; ppdn, ppattrs = pp       #pp: possibleParent
-            ppQualAwsName = getQualAwsName(pp)
+            ppQualGtwsName = getQualGtwsName(pp)
             if dn.lower().endswith(ppdn.lower()):
-                gtwsName2path[qualAwsName] = ( qualAwsName.split('/')[0],
-                                              os.path.join( gtwsName2path[ppQualAwsName][1] ,
-                                                            gtwsName2path[qualAwsName][1]   ) )
+                gtwsName2path[qualGtwsName] = ( qualGtwsName.split('/')[0],
+                                              os.path.join( gtwsName2path[ppQualGtwsName][1] ,
+                                                            gtwsName2path[qualGtwsName][1]   ) )
                 break
 
-    # build a gidNumber to gtwsName list (basically what aws's a group has access to)
+    # build a gidNumber to gtwsName list - basically what gtws(s) a group has access to
     gnum2gtwsName = dict()
     for ws in workspaces:
         dn, attrs = ws
@@ -247,7 +247,7 @@ def preProcessLdapObjects(con):
                     continue
                 if gnum not in gnum2gtwsName:
                     gnum2gtwsName[str(gnum)] = list()
-                gnum2gtwsName[str(gnum)].append( getQualAwsName(ws) )
+                gnum2gtwsName[str(gnum)].append( getQualGtwsName(ws) )
             if acl.lower().startswith('user:'):
                 uid = acl.split(':')[1]
                 try:
@@ -279,7 +279,6 @@ def preProcessLdapObjects(con):
 
 
 def main():
-
     ###################################################################################
     # parse command line options
     ###################################################################################

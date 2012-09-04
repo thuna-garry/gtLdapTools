@@ -1,7 +1,7 @@
-#!/bin/sh
+#! /bin/sh
 
 ##################################################################
-#
+# 
 #
 #
 #
@@ -26,18 +26,21 @@ eval "`$gtToolDir/ldapConf.py \
 
 #make a quick backup in /tmp (just in case)
 tar cvzf /tmp/${0##*/}_`date +%Y%m%d_%H%M`.tgz $gtToolDir
+find /tmp -name 'updateThese*.tgz' -mtime +13 -exec rm -f {} \;
 
 rsync -av                                      \
      --delete-during                           \
      -e "ssh -i /root/.ssh/id_rsa"             \
+     --exclude 'ldapConf.py'                   \
      gtLdapTools@${MASTER_FQDN}::gtLdapTools/  \
      ${gtToolDir}
 
 
 #########################################################################
-# repair the shortname in the ldapConf file with that of this server
-#########################################################################
-
-shortName=`hostname | sed "s/\.$DOMAIN//"`
-sed -i "s/^SERVER_SHORT_NAME.*$/SERVER_SHORT_NAME = '$shortName'/"  $gtToolDir/ldapConf.py
+# repair parts of the ldapConf file for this server
+####################################################################
+#eval `$scriptDir/ldapConf.py DOMAIN`
+#shortName=`hostname | sed "s/\.$DOMAIN//"`
+#sed "s/^SERVER_SHORT_NAME.*$/SERVER_SHORT_NAME = '$shortName'/"  < $scriptDir/ldapConf.py  > $tmpFile
+#mv -f $tmpFile $scriptDir/ldapConf.py
 

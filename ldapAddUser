@@ -11,7 +11,7 @@ from ldapUtil import *
 ####################################################################################
 # global constants
 ####################################################################################
-version="%prog: v0.90 (2012-Mar-03)"
+version="%prog: 2012-09-03"
 modifiedBy="Garry Thuna"
 
 
@@ -170,11 +170,11 @@ dn = USER_DN_FMT.format(uid)
 ur = list()
 ur.append( ('objectClass', ['sambaSamAccount', 'posixAccount', 'person', 'organizationalPerson', 'inetOrgPerson']) )
 ur.append( ('uid',                  [uid])                                                      )
-ur.append( ('cn',                   [givenNames + ' ' + surName])                               )  
+ur.append( ('cn',                   [givenNames + ' ' + surName])                               )
 ur.append( ('sn',                   [surName])                                                  )  
 ur.append( ('givenName',            [givenNames])                                               )  
 ur.append( ('mail',                 [mail])                                                     )  
-ur.append( ('uidNumber',            ['{0}'.format(uidNumber)])                                  )
+ur.append( ('uidNumber',            ['{0}'.format(uidNumber)])                                  )  
 ur.append( ('sambaSID',             ['S-1-5-21-12345-1-{0}'.format(uidNumber * 2)])             ) 
 ur.append( ('loginShell',           ['/sbin/nologin'])                                          )
 ur.append( ('gidNumber',            ['6001'])                                                   )
@@ -189,5 +189,5 @@ ur.append( ('userPassword',         ['e1NTSEF9NitmNjNMWW5Jb0J1Z214eUtaK2Q1NTVzNV
 con.add_s(dn, ur)
 con.unbind_s()
 
-print 
+print
 print

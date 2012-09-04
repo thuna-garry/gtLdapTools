@@ -13,7 +13,7 @@ from ldapUtil import *
 ####################################################################################
 # global constants
 ####################################################################################
-version="%prog: v0.85 (2011-Nov-27)"
+version="%prog: 2012-09-03"
 modifiedBy="Garry Thuna"
 
 
@@ -61,7 +61,7 @@ for ws in workspaces:
     dn, attrs = ws
 
     # is the workspace located on this server
-    server, path = gtwsName2path[getQualAwsName(ws)]
+    server, path = gtwsName2path[getQualGtwsName(ws)]
     if server != SERVER_SHORT_NAME:
         continue  #foreign ws
 
@@ -79,7 +79,7 @@ for ws in workspaces:
 
     if options.verbose: 
         print 'processing workspace:',
-        print getQualAwsName(ws) \
+        print getQualGtwsName(ws) \
             + '    dn: ' + dn
 
     # create any needed directories

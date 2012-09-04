@@ -1,35 +1,37 @@
-#!/usr/bin/python
+#! /usr/bin/python
 
 import os
 
 ####################################################################################
 # global constants
 ####################################################################################
-modifiedOn="2012-Mar-03"
+modifiedOn="2012-09-03"
 modifiedBy="Garry Thuna"
 
 
-####################################################################################
+################################################################################
+####
 # local server specific constants
-####################################################################################
-ORGANIZATION = 'planetFoods'
-DOMAIN = 'planetFoods.ca'
-SERVER_SHORT_NAME = 'router1.yyc'
-MASTER_SHORT_NAME = 'dirSrv1.yyc'
+################################################################################
+####
+ORGANIZATION = 'avmaxGroup'
+DOMAIN = 'avmaxGroup.com'
+SERVER_SHORT_NAME = 'dirSrv2peg.yyc'
+MASTER_SHORT_NAME = 'dirSrv2peg.yyc'
 
 
 ####################################################################################
-# directory (domain) constants 
+# directory (domain) constants
 ####################################################################################
-SERVER_FQDN = SERVER_SHORT_NAME + '.' + DOMAIN 
-MASTER_FQDN = MASTER_SHORT_NAME + '.' + DOMAIN 
+SERVER_FQDN = SERVER_SHORT_NAME + '.' + DOMAIN
+MASTER_FQDN = MASTER_SHORT_NAME + '.' + DOMAIN
 
 BASE_DN         = 'o=' + ORGANIZATION
 BASE_DN_SERVER  = 'gtsName=' + SERVER_SHORT_NAME + ',ou=servers,' + BASE_DN
 
-BIND_URI = 'ldap://' + MASTER_FQDN
+BIND_URI = 'ldapi://' #+ MASTER_FQDN
 BIND_DN  = 'uid=serverAuth,ou=bindAccounts,gtsName=' + SERVER_SHORT_NAME + ',ou=servers,' + BASE_DN
-BIND_PW  = 'password'
+BIND_PW  = 'D4dTednGD2ms'
 
 USER_DN_FMT  = 'uid={0},ou=users,' + BASE_DN
 GROUP_DN_FMT = 'cn={0},ou=groups,' + BASE_DN
@@ -96,14 +98,10 @@ SAMBA_HOME_TEMPLATE = '''
         ;exclude = *.tmp|*.temp|*.o|*.obj|~$*|*.~??|*.log|*.trace
         ;excludedir = /tmp|/temp|/cache
         ;noversions = *.doc|*.ppt|*.dat|*.ini
-
 '''
 
 SAMBA_WORKSPACE_CONF = 'smb_workspace.conf'
 SAMBA_WORKSPACE_TEMPLATE = '''
-
-
-
 [{shareName}]
         comment = {shareComment}
         path = {sharePath}
@@ -139,7 +137,6 @@ SAMBA_WORKSPACE_TEMPLATE = '''
         ;exclude = *.tmp|*.temp|*.o|*.obj|~$*|*.~??|*.log|*.trace
         ;excludedir = /tmp|/temp|/cache
         ;noversions = *.doc|*.ppt|*.dat|*.ini
-
 '''
 
 
@@ -155,17 +152,18 @@ import ldap
 # TLS-related options have to be set globally since the TLS context is only initialized once
 #-----------
 
-#CACERTFILE = "/etc/openldap/cacerts/"                                 # directories don't seem to work
-#CACERTFILE = "/etc/openldap/cacerts/" + ORGANIZATION + "-cacert.pem"  # file contains all trusted CA certs
+# directories don't seem to work so
+# file will have to contain all/all trusted CA certs
+#CACERTFILE = OPENLDAP_DIR + "/cacerts/" + ORGANIZATION + "-cacert.pem"
 
 # Force cert validation
-ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT,ldap.OPT_X_TLS_DEMAND)
+ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_DEMAND)
 ldap.set_option(ldap.OPT_X_TLS_DEMAND, True)
 
 # Set path name of file containing all trusted CA certificates
-ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, "/etc/openldap/cacerts/" + ORGANIZATION + "-cacert.pem")
-ldap.set_option(ldap.OPT_X_TLS_CERTFILE,   "/etc/openldap/certs/" + SERVER_SHORT_NAME + "." + DOMAIN + "-cert.pem")
-ldap.set_option(ldap.OPT_X_TLS_KEYFILE,    "/etc/openldap/certs/" + SERVER_SHORT_NAME + "." + DOMAIN + "-key.pem")
+ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, OPENLDAP_DIR + "/cacerts/" + ORGANIZATION + "-cacert.pem")
+ldap.set_option(ldap.OPT_X_TLS_CERTFILE,   OPENLDAP_DIR + "/certs/"   + SERVER_FQDN  + "-cert.pem")
+ldap.set_option(ldap.OPT_X_TLS_KEYFILE,    OPENLDAP_DIR + "/certs/"   + SERVER_FQDN  + "-key.pem")
 
 
 ####################################################################################

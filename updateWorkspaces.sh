@@ -1,4 +1,4 @@
-#!/bin/sh
+#! /bin/sh
 
 ##################################################################
 # Script to check a cached copy of the ldap DIT against the current
@@ -20,11 +20,12 @@ eval "`$gtToolDir/ldapConf.py \
         BASE_DN   \
      `"
 
-tmpDir=$TMP_DIR/${0##*/}.$$
+tmpDir=$TMP_DIR/${0##*/}.cache
+
 
 
 #############################################################################
-# generate the ldif
+# generate current ldif
 #############################################################################
 mkdir -p "$tmpDir"
 ldapsearch                               \

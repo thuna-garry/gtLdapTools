@@ -13,7 +13,7 @@ from ldapUtil import *
 ####################################################################################
 # global constants
 ####################################################################################
-version="%prog: v0.93 (2011-Nov-27)"
+version="%prog: 2012-09-03)"
 modifiedBy="Garry Thuna"
 
 
@@ -73,7 +73,7 @@ for u in users:
     if 'sambaHomePath' not in attrs:
         print >> sys.stderr, '  *** Error no "sambaHomePath" set for user: ' + attrs['uid'][0]
         continue
-    if attrs['sambaHomePath'][0].find(SERVER_SHORT_NAME) < 0:
+    if attrs['sambaHomePath'][0].lower().find(SERVER_SHORT_NAME.lower()) < 0:
         continue
 
     # create user's directory
@@ -172,9 +172,10 @@ for u in users:
 #        print '    writing link file: ' + linkFile
 #    with open(linkFile, 'w') as f:
 #        f.write("[InternetShortcut]" + "\r\n")
-#        f.write("URL=https://dirSrv1.yyc.planetFoods.ca/changePassword.html" + "\r\n")
+#        f.write("URL=https://dirsrv1peg.yyc.avmaxgroup.com/changePassword.html" + "\r\n")
 #    setOwnerGroupPerms(linkFile, attrs['uidNumber'][0], attrs['gidNumber'][0], 0400)
 
+#todo: this wont work if specific users were set on cmdline
     # accumulate the share definition in a string
     smbConf = smbConf + SAMBA_HOME_TEMPLATE.format(
             shareName    = attrs['uid'][0],

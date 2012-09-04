@@ -1,4 +1,4 @@
-#!/bin/sh
+#! /bin/sh
 
 ##################################################################
 # Copy the slapd conf files from a master server and deploy
@@ -63,7 +63,7 @@ rm -rf $tmpDir.*
 # get the source schema files
 #############################################################################
 mkdir $tmpDir.1
-rsync -av --progress $MASTER_FQDN:$schemaDir/ $tmpDir.1/  >/dev/null
+rsync -av --progress $masterFqdn:$schemaDir/ $tmpDir.1/  >/dev/null
 
 # see if new files are different than current
 for f in $tmpDir.1/*; do

@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/sh
 
 ##################################################################
 # clear the sssd cache and restart the sssd daemon

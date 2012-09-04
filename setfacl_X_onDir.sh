@@ -1,10 +1,10 @@
-#!/bin/sh
+#! /bin/sh
 
 ##################################################################
 # a utility script to set the acl execute permission on a particluar
 # directory that may or may not already have an existing acl
 ##################################################################
-# modified on: 2012-01-14
+# modified on: 2012-09-03
 # modified by: Garry Thuna
 ##################################################################
 
