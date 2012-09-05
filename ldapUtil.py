@@ -152,41 +152,35 @@ def preProcessLdapObjects(con):
     groups = [ r for r in qrSorted if r[0].lower().find(',ou=groups,') + 1 ]
     users  = [ r for r in qrSorted if r[0].lower().find(',ou=users,') + 1 ]
 
-    # build a gnum to groups' index mapping
-    gnum2idx = dict()
-    gidx = 0
-    for g in groups:
-        gnum2idx[g[1]['gidNumber'][0]] = gidx
-        gidx += 1
-
     # build a gid to groups' index mapping
-    gid2idx = dict()
-    gidx = 0
+    gid2group = dict()
     for g in groups:
-        gid2idx[g[1]['cn'][0]] = gidx
-        gidx += 1
+        gid2group[g[1]['cn'][0]] = g
 
     # build a uid to users' index mapping
-    uid2idx = dict()
-    uidx = 0
+    uid2user = dict()
     for u in users:
-        uid2idx[u[1]['uid'][0]] = uidx
-        uidx += 1
+        uid2user[u[1]['uid'][0]] = u
+
+    # build a gnum to groups' index mapping
+    gnum2group = dict()
+    for g in groups:
+        gnum2group[g[1]['gidNumber'][0]] = g
 
     #resolve each user's primarty group and add the uid to that group's memberUid list
     for u in users:
         try:
-            gAttrDict = groups[ gnum2idx[ u[1]['gidNumber'][0] ]][1]
+            gAttrDict = gnum2group[ u[1]['gidNumber'][0] ][1]
         except KeyError, e:
             print >>sys.stderr, "DN: " + u[0] + "\n" +\
                                 "    has gidNumber '" + u[1]['gidNumber'][0] + "' which was not found."
             continue
-        if 'memberUid' not in gAttrDict:
+        if 'memberUid' not in gAttrDict: 
             gAttrDict['memberUid'] = list()
         gAttrDict['memberUid'].append( u[1]['uid'][0] )
 
     #create a belongsTo dictionary for each user's group memberships
-    #entries are of the form uid:[gidNumber,gidNumber,...]
+    #entries are of the form uid:[gid, gid, ...]
     belongsTo = dict()
     for g in groups:
         if 'memberUid' not in g[1]:    #group has no members
@@ -194,14 +188,14 @@ def preProcessLdapObjects(con):
         muids = g[1]['memberUid']
         for m in [m for m in muids]:   #list comprehension allows orig list to be mutated
             try:
-                exists = uid2idx[m]
+                exists = uid2user[m]
             except KeyError, e:
                 print >>sys.stderr, "DN: " + g[0] + "\n" +\
                                     "    has memberUid '" + m + "' which was not found."
                 del muids[muids.index(m)]  #remove the erroneous entry
             if m not in belongsTo:
                 belongsTo[m] = list()
-            belongsTo[m].append( g[1]['gidNumber'][0] )
+            belongsTo[m].append( g[1]['cn'][0] )
 
 
     ####################################################################################
@@ -234,27 +228,26 @@ def preProcessLdapObjects(con):
 
     # build a gidNumber to gtwsName list - basically what gtws(s) have acls referring to the group
     #   and a uid       to gtwsName list - basically what gtws(s) have acls referring to the user
-    gnum2gtwsName = dict()
-#todo
+    gid2gtwsName = dict()
     uid2gtwsName = dict()
     for ws in workspaces:
         dn, attrs = ws
         for acl in attrs['gtwsACL']:
             if acl.lower().startswith('group:'):
                 gid = acl.split(':')[1]
-                try:
-                    gnum = groups[ gid2idx[gid] ][1]['gidNumber'][0]
+                try:                           # sanity check that the gid is valid
+                    exists = gid2group[gid]
                 except KeyError, e:
                     print >>sys.stderr, "DN: " + dn + "\n" +\
                                         "    has acl referring to group '" + gid + "' which was not found."
                     continue
-                if gnum not in gnum2gtwsName:
-                    gnum2gtwsName[str(gnum)] = list()
-                gnum2gtwsName[str(gnum)].append( getQualGtwsName(ws) )
+                if gid not in gid2gtwsName:
+                    gid2gtwsName[gid] = list()
+                gid2gtwsName[gid].append( getQualGtwsName(ws) )
             if acl.lower().startswith('user:'):
                 uid = acl.split(':')[1]
-                try:
-                    gnum = users[ uid2idx[uid] ][1]['uidNumber'][0]
+                try:                           # sanity check that the uid is valid
+                    exists = uid2user[uid]
                 except KeyError, e:
                     print >>sys.stderr, "DN: " + dn + "\n" +\
                                         "    has acl referring to user '" + uid + "' which was not found."
@@ -279,8 +272,8 @@ def preProcessLdapObjects(con):
     ####################################################################################
     # that's all we need
     ####################################################################################
-    return groups, users, gnum2idx, gid2idx, uid2idx, belongsTo                  \
-         , workspaces, gtwsName2ws, gtwsName2path, gnum2gtwsName, uid2gtwsName   \
+    return groups, users, gid2group, uid2user, belongsTo                        \
+         , workspaces, gtwsName2ws, gtwsName2path, gid2gtwsName, uid2gtwsName   \
          , servers, gtsName2server
 
 
@@ -304,14 +297,13 @@ def main():
 
     groups,                \
         users,             \
-         gnum2idx,         \
-         gid2idx,          \
-         uid2idx,          \
+         gid2group,        \
+         uid2user,         \
          belongsTo,        \
         workspaces,        \
          gtwsName2ws,      \
          gtwsName2path,    \
-         gnum2gtwsName,    \
+         gid2gtwsName,     \
          uid2gtwsName,     \
         servers,           \
          gtsName2server  = preProcessLdapObjects(con)

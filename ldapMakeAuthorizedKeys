@@ -43,7 +43,7 @@ usage = "usage: %prog [options]"
 description = "Rebuilds authorized_key files from public keys stored in the directory"
 parser = OptionParser(usage=usage, version=version, description=description)
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
-                        help="show detailschanges made to file system [default: %default]")
+                        help="show detailed changes made to file system [default: %default]")
 (options, args) = parser.parse_args()
 
 
@@ -63,7 +63,7 @@ con.unbind_s()
 ####################################################################################
 hostAccounts = {}   # hostaccountName: [(option, pubKey)]
 for r in qSsh:
-    print "server " + getDNattr(r[0], 'cn') + "  " + getDNattr(r[0], 'ssh')
+    print "server: " + getDNattr(r[0], 'gtsName') + "   account: " + getDNattr(r[0], 'ssh')
     uid = r[1]['sshHostAccountName'][0]
     keylist = hostAccounts.get(uid, [])
 

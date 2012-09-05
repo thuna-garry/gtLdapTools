@@ -34,14 +34,13 @@ con.simple_bind_s(BIND_DN, BIND_PW)
 
 groups,                \
     users,             \
-     gnum2idx,         \
-     gid2idx,          \
-     uid2idx,          \
+     gid2group,        \
+     uid2user,         \
      belongsTo,        \
     workspaces,        \
      gtwsName2ws,      \
      gtwsName2path,    \
-     gnum2gtwsName,    \
+     gid2gtwsName,     \
      uid2gtwsName,     \
     servers,           \
      gtsName2server  = preProcessLdapObjects(con)

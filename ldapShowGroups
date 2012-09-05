@@ -38,14 +38,13 @@ con.simple_bind_s(BIND_DN, BIND_PW)
 
 groups,                \
     users,             \
-     gnum2idx,         \
-     gid2idx,          \
-     uid2idx,          \
+     gid2group,        \
+     uid2user,         \
      belongsTo,        \
     workspaces,        \
      gtwsName2ws,      \
      gtwsName2path,    \
-     gnum2gtwsName,    \
+     gid2gtwsName,     \
      uid2gtwsName,     \
     servers,           \
      gtsName2server  = preProcessLdapObjects(con)
@@ -65,6 +64,6 @@ for g in groups:
         if 'memberUid' in g[1]:
             for m in g[1]['memberUid']:
                 print ''.ljust(12) + 'member: ' + m + \
-                      ' (' + users[ uid2idx[ m ] ][1]['cn'][0] + ')'
+                      ' (' + uid2user[m][1]['cn'][0] + ')'
 
 

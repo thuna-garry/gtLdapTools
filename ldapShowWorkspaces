@@ -41,14 +41,13 @@ con.simple_bind_s(BIND_DN, BIND_PW)
 
 groups,                \
     users,             \
-     gnum2idx,         \
-     gid2idx,          \
-     uid2idx,          \
+     gid2group,        \
+     uid2user,         \
      belongsTo,        \
     workspaces,        \
      gtwsName2ws,      \
      gtwsName2path,    \
-     gnum2gtwsName,    \
+     gid2gtwsName,     \
      uid2gtwsName,     \
     servers,           \
      gtsName2server  = preProcessLdapObjects(con)
@@ -61,10 +60,10 @@ con.unbind_s()
 ####################################################################################
 def showAclGroupMembers(aclType, aclName):
     if aclType == 'group':
-        g = groups[gid2idx[aclName]]
+        g = gid2group[aclName]
         userString = ''
         for m in g[1]['memberUid']:
-            userString = userString + ', ' + m + ' (' + users[ uid2idx[ m ] ][1]['cn'][0] + ')'
+            userString = userString + ', ' + m + ' (' + uid2user[m][1]['cn'][0] + ')'
         for s in textwrap.wrap(userString[2:], 80):
             print ''.ljust(12) + s
 
