@@ -46,6 +46,7 @@ groups,                \
      gtwsName2ws,      \
      gtwsName2path,    \
      gnum2gtwsName,    \
+     uid2gtwsName,     \
     servers,           \
      gtsName2server  = preProcessLdapObjects(con)
 
@@ -56,13 +57,17 @@ print '==============================================================='
 print '= User list                                                   ='
 print '==============================================================='
 for u in users:
-    if len(args) > 0 and u[1]['uid'][0].lower() not in [a.lower() for a in args]:
+    uid =  u[1]['uid'][0]
+    uidNumber = u[1]['uidNumber'][0]
+
+    # were specific uid(s)  specified on the command line
+    if len(args) > 0 and uid.lower() not in [a.lower() for a in args]:
         continue
-    print (u[1]['uid'][0] + ' (' + u[1]['uidNumber'][0] + ') ').ljust(35) \
-        + 'dn: ' + u[0]
+
+    print (uid + ' (' + uidNumber + ')').ljust(35) + 'dn: ' + u[0]
     if options.showMembership:
-        if u[1]['uid'][0] in belongsTo:
-            for gnum in belongsTo[ u[1]['uid'][0] ]:
+        if uid in belongsTo:
+            for gnum in belongsTo[ uid ]:
                 print ''.ljust(12) + 'member of: ' \
                     + groups[ gnum2idx[ gnum ] ][1]['cn'][0] \
                     + ' (' + gnum + ')'

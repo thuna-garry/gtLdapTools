@@ -49,6 +49,7 @@ groups,                \
      gtwsName2ws,      \
      gtwsName2path,    \
      gnum2gtwsName,    \
+     uid2gtwsName,     \
     servers,           \
      gtsName2server  = preProcessLdapObjects(con)
 

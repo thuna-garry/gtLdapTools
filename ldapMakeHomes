@@ -49,6 +49,7 @@ groups,                \
      gtwsName2ws,      \
      gtwsName2path,    \
      gnum2gtwsName,    \
+     uid2gtwsName,     \
     servers,           \
      gtsName2server  = preProcessLdapObjects(con)
 
@@ -61,34 +62,35 @@ con.unbind_s()
 smbConf = ''  #string in which to accumulate the samba share definitions
 for u in users:
     dn, attrs = u
+    uid = attrs['uid'][0]
 
     # is the user's home is on this server
     if 'sambaHomePath' not in attrs:
-        print >> sys.stderr, '  *** Error no "sambaHomePath" set for user: ' + attrs['uid'][0]
+        print >> sys.stderr, '  *** Error no "sambaHomePath" set for user: ' + uid
         continue
     if attrs['sambaHomePath'][0].lower().find(SERVER_SHORT_NAME.lower()) < 0:
         continue
 
     # accumulate the share definition in a string
-    userDir = os.path.join(SAMBA_HOME, attrs['uid'][0])
+    userDir = os.path.join(SAMBA_HOME, uid)
     smbConf = smbConf + SAMBA_HOME_TEMPLATE.format(
-            shareName    = attrs['uid'][0],
+            shareName    = uid,
             shareComment = 'home directory of ' + attrs['cn'][0],
             sharePath    = userDir
         )
 
     # were specific workspaces specified on the command line
-    if len(args) > 0 and attrs['uid'][0].lower() not in [a.lower() for a in args]:
+    if len(args) > 0 and uid.lower() not in [a.lower() for a in args]:
         continue
 
     if options.verbose: 
         print 'processing user:',
-        print attrs['uid'][0] \
+        print uid \
             + '  (' + attrs['uidNumber'][0] + ')  ' \
             + 'dn: ' + dn
 
     # create user's directory
-    userDir = os.path.join(SAMBA_HOME, attrs['uid'][0])
+    userDir = os.path.join(SAMBA_HOME, uid)
     if options.verbose: 
         print '    ensuring user directory exists:       ' + userDir
     p = subprocess.Popen([ "mkdir", "-p", userDir ]); p.wait()
@@ -111,11 +113,15 @@ for u in users:
 
     # determine the unique set of workspaces that the user can access
     accessibleWsNames= list()
-    for gnum in belongsTo[ attrs['uid'][0] ]:      #groups that user belongs to
-        if gnum in gnum2gtwsName:
-            for gtwsName in gnum2gtwsName[gnum]:     #workspaces accessible by group
-                if gtwsName not in accessibleWsNames:
-                    accessibleWsNames.append(gtwsName)
+    for gnum in belongsTo[ uid ]:                       #groups that user belongs to
+        if gnum in gnum2gtwsName:                       #there are workspaces to which this gnum has access
+            for gtwsName in gnum2gtwsName[gnum]:        #workspaces accessible by gnum
+                if gtwsName not in accessibleWsNames:   #if we haven't already added workspace to list
+                    accessibleWsNames.append(gtwsName)  # then do so
+    if uid in uid2gtwsName:                             #there are workspaces to which this uid has access
+        for gtwsName in uid2gtwsName[uid]:              #workspaces accessible by uid
+            if gtwsName not in accessibleWsNames:       #if we haven't already added workspace to list
+                accessibleWsNames.append(gtwsName)      # then do so
 
     # modify the accessbileWsNames so that we also have the server and path
     # and then sort by the server + path

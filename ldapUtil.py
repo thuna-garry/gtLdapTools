@@ -185,7 +185,8 @@ def preProcessLdapObjects(con):
             gAttrDict['memberUid'] = list()
         gAttrDict['memberUid'].append( u[1]['uid'][0] )
 
-    #create a belongsTo list for each user's group memberships
+    #create a belongsTo dictionary for each user's group memberships
+    #entries are of the form uid:[gidNumber,gidNumber,...]
     belongsTo = dict()
     for g in groups:
         if 'memberUid' not in g[1]:    #group has no members
@@ -231,8 +232,11 @@ def preProcessLdapObjects(con):
                                                             gtwsName2path[qualGtwsName][1]   ) )
                 break
 
-    # build a gidNumber to gtwsName list - basically what gtws(s) a group has access to
+    # build a gidNumber to gtwsName list - basically what gtws(s) have acls referring to the group
+    #   and a uid       to gtwsName list - basically what gtws(s) have acls referring to the user
     gnum2gtwsName = dict()
+#todo
+    uid2gtwsName = dict()
     for ws in workspaces:
         dn, attrs = ws
         for acl in attrs['gtwsACL']:
@@ -255,6 +259,9 @@ def preProcessLdapObjects(con):
                     print >>sys.stderr, "DN: " + dn + "\n" +\
                                         "    has acl referring to user '" + uid + "' which was not found."
                     continue
+                if uid not in uid2gtwsName:
+                    uid2gtwsName[uid] = list()
+                uid2gtwsName[uid].append( getQualGtwsName(ws) )
 
 
     ####################################################################################
@@ -272,9 +279,9 @@ def preProcessLdapObjects(con):
     ####################################################################################
     # that's all we need
     ####################################################################################
-    return groups, users, gnum2idx, gid2idx, uid2idx, belongsTo, \
-           workspaces, gtwsName2ws, gtwsName2path, gnum2gtwsName,   \
-           servers, gtsName2server
+    return groups, users, gnum2idx, gid2idx, uid2idx, belongsTo                  \
+         , workspaces, gtwsName2ws, gtwsName2path, gnum2gtwsName, uid2gtwsName   \
+         , servers, gtsName2server
 
 
 def main():
@@ -305,6 +312,7 @@ def main():
          gtwsName2ws,      \
          gtwsName2path,    \
          gnum2gtwsName,    \
+         uid2gtwsName,     \
         servers,           \
          gtsName2server  = preProcessLdapObjects(con)
     con.unbind_s()
