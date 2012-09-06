@@ -6,37 +6,7 @@
 # the paths where any potential recycle bin directories would be
 # placed and check each with tmpwatch
 ##################################################################
-# modified on: 2012-08-26
-# modified by: Garry Thuna
-##################################################################
-
-idleDays=${1:-5}
-
-cat /data/sambaFiles/smb_{home,workspace}.conf      | \
-    grep '^ *path = \|^ *recycle:repository ='      | \
-    paste -d' ' - -                                 | \
-    awk '{print $3 "/" $6}'                         | \
-while read dir; do
-    echo ==========  process: $dir
-    if [ -d $dir ]; then
-        /usr/sbin/tmpwatch -umc ${idleDays}d $dir
-        if [ -z "`ls -A $dir 2>/dev/null`" ]; then
-            rmdir $dir
-        fi
-    fi
-done
-
-
-
-#! /bin/sh
-
-##################################################################
-# extract from the smb_home.conf
-#              and smb_workspace.conf
-# the paths where any potential recycle bin directories would be
-# placed and check each with tmpwatch
-##################################################################
-# modified on: 2012.01.14
+# modified on: 2012.08.26
 # modified by: Garry Thuna
 ##################################################################
 
@@ -68,10 +38,4 @@ while read dir; do
         fi
     fi
 done
-
-
-
-
-
-
 

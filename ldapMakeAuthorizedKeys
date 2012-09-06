@@ -52,6 +52,7 @@ parser.add_option("-v", "--verbose", action="store_true", dest="verbose", defaul
 #     run the queries
 ####################################################################################
 con = ldap.initialize(BIND_URI)
+#con.start_tls_s()
 con.simple_bind_s(BIND_DN, BIND_PW)
 qSsh = querySshAccess(con)
 qPkHolder = querySshPubKeyHolder(con)

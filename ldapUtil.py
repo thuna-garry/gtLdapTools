@@ -293,6 +293,7 @@ def main():
     #     do the preliminary procssing of workspaces
     ####################################################################################
     con = ldap.initialize(BIND_URI)
+    #con.start_tls_s()
     con.simple_bind_s(BIND_DN, BIND_PW)
 
     groups,                \

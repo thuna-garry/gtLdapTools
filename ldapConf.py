@@ -14,6 +14,7 @@ modifiedBy="Garry Thuna"
 # local server specific constants
 ################################################################################
 ####
+LOCAL_OS = 'linux'                #must be either 'linux' or 'bsd'
 ORGANIZATION = 'avmaxGroup'
 DOMAIN = 'avmaxGroup.com'
 SERVER_SHORT_NAME = 'dirSrv2peg.yyc'
@@ -98,6 +99,7 @@ SAMBA_HOME_TEMPLATE = '''
         ;exclude = *.tmp|*.temp|*.o|*.obj|~$*|*.~??|*.log|*.trace
         ;excludedir = /tmp|/temp|/cache
         ;noversions = *.doc|*.ppt|*.dat|*.ini
+
 '''
 
 SAMBA_WORKSPACE_CONF = 'smb_workspace.conf'
@@ -137,6 +139,7 @@ SAMBA_WORKSPACE_TEMPLATE = '''
         ;exclude = *.tmp|*.temp|*.o|*.obj|~$*|*.~??|*.log|*.trace
         ;excludedir = /tmp|/temp|/cache
         ;noversions = *.doc|*.ppt|*.dat|*.ini
+
 '''
 
 

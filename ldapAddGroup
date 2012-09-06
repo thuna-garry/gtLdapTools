@@ -122,6 +122,7 @@ else:
 #     do the preliminary procssing of workspaces
 ####################################################################################
 con = ldap.initialize(hostUri)
+#con.start_tls_s()
 con.simple_bind_s(bindDN, bindPass)
 
 groups,                \

@@ -35,6 +35,7 @@ parser.add_option("-v", "--verbose", action="store_true", dest="verbose", defaul
 #     do the preliminary procssing of workspaces
 ####################################################################################
 con = ldap.initialize(BIND_URI)
+#con.start_tls_s()
 con.simple_bind_s(BIND_DN, BIND_PW)
 
 groups,                \
@@ -72,6 +73,34 @@ for ws in workspaces:
             shareComment = attrs.get('description', ['no description supplied'])[0],
             sharePath    = wsDir
         )
+    # accumulate the share definition in a string
+    readList = []
+    writeList = []
+    for acl in attrs['gtwsACL']:
+        aclType, aclTarget, aclPerms = acl.split(':')
+        if aclPerms[1] == 'w':
+            if aclType.lower() == "group":
+                writeList.append('+' + aclTarget)
+            elif aclType.lower() == "user":
+                writeList.append(aclTarget)
+            else:
+                pass
+        elif aclPerms[0] == 'r':
+            if aclType.lower() == "group":
+                readList.append('+' + aclTarget)
+            elif aclType.lower() == "user":
+                readList.append(aclTarget)
+            else:
+                pass
+        elif aclPerms[2].lower() == 'x':
+            pass
+    if len(readList) + len(writeList):
+        smbConf = smbConf + "        valid users = " + " ".join(readList) + " " + " ".join(writeList) + "\n"
+    if len(readList):
+        smbConf = smbConf + "        read list = " + " ".join(readList) + "\n"
+    if len(writeList):
+        smbConf = smbConf + "        write list = " + " ".join(writeList) + "\n"
+    smbConf = smbConf + "\n\n\n"
 
     # were specific workspaces specified on the command line
     if len(args) > 0 and attrs['gtwsName'][0].lower() not in [a.lower() for a in args]:
@@ -103,23 +132,32 @@ for ws in workspaces:
     # for the wsDir: assemble the acls in a temp file
     fd, fname = tempfile.mkstemp()
     with open(fname, 'w') as f:
-#        f.write( 'mask::rwx\n'          )   #needed on BSD
         f.write( 'user::rwX\n'          )
         f.write( 'group::---\n'         )
         f.write( 'other::---\n'         )
-#        f.write( 'default:mask::rwx\n'  )   #needed on BSD
         f.write( 'default:user::rwX\n'  )
         f.write( 'default:group::---\n' )
         f.write( 'default:other::---\n' )
+        if LOCAL_OS.lower() == 'bsd':
+            f.write( 'mask::rwx\n'          )
+            f.write( 'default:mask::rwx\n'  )
         for acl in attrs['gtwsACL']:
             f.write( acl + '\n' )
             f.write( 'default:' + acl + '\n' )
     os.close(fd)
 
     # for the wsDir: apply the acls
+    if LOCAL_OS.lower == 'linux':
+        cmd = [ "setfacl", "-R", "--set-file", fname, wsDir ]
+    else:
+        exe = os.path.join( os.path.split(sys.argv[0])[0], "setfacl_recursively.sh" )
+        cmd = [ exe, fname, wsDir ]
     if options.verbose: 
         print '    applying ACLs to workspace:           ' + wsDir
-    p = subprocess.Popen([ "setfacl", "-R", "--set-file", fname, wsDir ]); p.wait()
+        p = subprocess.Popen(cmd); p.wait()
+    else:
+        with open('/dev/null', 'w') as f:
+            p = subprocess.Popen(cmd, stdout=f); p.wait()
     if p.returncode:
         print >> sys.stderr, '  *** Error applying ACLs: ' + wsDir
 
