@@ -1,0 +1,57 @@
+NFSv4ACLs
+
+full_set             modify_set           read_set             write_set              explanation
+==================   ==================   ==================   ==================     ========================================================
+r read_data          r read_data          r read_data                                 d=list contents         f=read file
+w write_data         w write_data                              w write_data           d=add new file          f=replace/modify file contents
+x execute            x execute                                                        d=search contents       f=execute file
+p append_data        p append_data                             p append_data          d=create sub directory  f=extend file (not implemented)    
+D delete_child       D delete_child                                                   d=delete child
+d delete             d delete                                                                                 f=delete file (ignores parent D/w/a)           
+a read_attributes    a read_attributes    a read_attributes                           d=read  attributes      f=read  attributes
+A write_attributes   A write_attributes                        A write_attributes     d=write attributes      f=write attributes
+R read_xattr         R read_xattr         R read_xattr                                d=read  xattr           f=read  xattr
+W write_xattr        W write_xattr                             W write_xattr          d=write xattr           f=write xattr
+c read_acl           c read_acl           c read_acl                                  d=read  acl             f=read  acl
+C write_acl                                                                           d=write acl             f=write acl
+o write_owner                                                                         d=change owner/group    f=change owner/group
+s synchronize        s synchronize                                                    d=not implemented       f=not implemented               
+
+
+directory Inheritance     explanation
+======================    ==========================================
+f file_inherit            inherit parent acls to child files
+d dir_inherit             inherit parent acls to child directories
+i inherit_only            inherit parent acls but applies only to newly created children and not the directory itself
+n no_propagate            inherit parent acls only to immediate children
+
+
+positional                                                         Notes
+======================                                             ===========================================================================
+          owner@:--------------:-------:deny                       - The last ACE of a particular type is what will be used. So in the
+          owner@:rwxp---A-W-Co-:-------:allow                         following:   group:busyPeople:rw-p--aARWcCos:-------:allow  
+          group@:-w-p----------:-------:deny                                       group:busyPeople:--x-----------:-------:allow
+          group@:r-x-----------:-------:allow                         busyPeople will only have --x----------- as both ACEs are for the 
+       everyone@:-w-p---A-W-Co-:-------:deny                          same user/group and both are of type allow.
+       everyone@:r-x---a-R-c--s:-------:allow                      - The first occurance of a permission bit will be used. So in the    
+                 ||||||||||||||:|||||||                               following:   group:busyPeople:rw-p--aARWcCos:-------:allow  
+    (r)read data +|||||||||||||:||||||+ (I)nherited                                group:busyPeople:-w------------:-------:deny
+    (w)rite data -+||||||||||||:|||||+- (F)ailed access (audit)       busyPeople will be permitted "w" as it first appeared in an allow ACE
+       e(x)ecute --+|||||||||||:||||+-- (S)uccess access (audit)   
+        a(p)pend ---+||||||||||:|||+--- (n)o propagate             - To list directory contents it must have both "r" and "a"
+  (D)elete child ----+|||||||||:||+---- (i)nherit only             - To see a fileObj the parent must have "x"
+        (d)elete -----+||||||||:|+----- (d)irectory inherit        - A directory with "r" but no "x" will prevent access to named children
+   read (a)ttrib ------+|||||||:+------ (f)ile inherit             - To see anything more than a fileObj's name it must have "a" 
+  write (A)ttrib -------+||||||                                    
+    (R)ead xattr --------+|||||                                    - To delete a fileObj parent must have "w" or "D" and fileO bj must have "a"
+   (W)rite xattr ---------+||||                                    - If parent denies "D" no child deletion will occur even if parent allows "w"
+      read a(c)l ----------+|||                                    - If fileObj has "d", and it can be seen by user, then it can be deleted
+     write a(C)l -----------+||                                       regardless of parent's "w", "D", or "a" settings (including denials)
+  change (o)wner ------------+|                                    
+            sync -------------+                                    - To create a file   the parent must have "w" and "x"
+                                                                   - To create a subdir the parent must have "w", "x" and "p append_data"
+                                                                   
+                                                                   - To rename a fileObj both deletion and creation of fileObj are required
+
+                                                                   - To append data to a file it must have both "r" and "w"
+                                                                    
