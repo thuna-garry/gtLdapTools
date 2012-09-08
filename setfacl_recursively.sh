@@ -22,8 +22,8 @@ cat "$aclFile" | grep    '^default' | sed -e 's/^default://' -e 's/X$/x/'  > ${a
 find "$rootDir" | while read f; do
     if [ -d "$f" ]; then
         #echo "        setting acls for directory:       $f/"
-        setfacl -bM ${aclFile}.dir "$f"
-        setfacl -dM ${aclFile}.def "$f"
+        setfacl -bM  ${aclFile}.dir "$f"
+        setfacl -bdM ${aclFile}.def "$f"
     elif [ -f "$f" ]; then
         setfacl -bM ${aclFile}.file "$f"
     fi
