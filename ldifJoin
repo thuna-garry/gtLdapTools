@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/local/bin/python
 
 #####################################################################
 # take an ldif as stdin and re-assemble continuation lines

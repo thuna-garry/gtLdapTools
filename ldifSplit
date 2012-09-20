@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/local/bin/python
 
 #####################################################################
 # take an ldif that has been processed by ldifJoin and split long lines
