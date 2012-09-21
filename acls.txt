@@ -27,7 +27,7 @@ n no_propagate            inherit parent acls only to immediate children
 
 
 positional                                                         Notes
-======================                                             ===========================================================================
+========================================================           ===========================================================================
           owner@:--------------:-------:deny                       - The last ACE of a particular type is what will be used. So in the
           owner@:rwxp---A-W-Co-:-------:allow                         following:   group:busyPeople:rw-p--aARWcCos:-------:allow  
           group@:-w-p----------:-------:deny                                       group:busyPeople:--x-----------:-------:allow

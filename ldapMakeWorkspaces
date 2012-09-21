@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/local/bin/python
 
 import os
 import ldap
@@ -159,7 +159,7 @@ for ws in workspaces:
         with open('/dev/null', 'w') as f:
             p = subprocess.Popen(cmd, stdout=f); p.wait()
     if p.returncode:
-        print >> sys.stderr, '  *** Error applying ACLs: ' + wsDir
+        print >> sys.stderr, '  *** Error applying ACLs: ' + wsDir + " (" + str(p.returncode) + ")"
 
     # for the wsDir: cleanup temp file
     os.unlink(fname)

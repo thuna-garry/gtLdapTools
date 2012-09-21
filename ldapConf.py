@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/local/bin/python
 
 import os
 
@@ -14,11 +14,11 @@ modifiedBy="Garry Thuna"
 # local server specific constants
 ################################################################################
 ####
-LOCAL_OS = 'linux'                #must be either 'linux' or 'bsd'
-ORGANIZATION = 'avmaxGroup'
-DOMAIN = 'avmaxGroup.com'
-SERVER_SHORT_NAME = 'dirSrv2peg.yyc'
-MASTER_SHORT_NAME = 'dirSrv2peg.yyc'
+LOCAL_OS = 'bsd'                #must be either 'linux' or 'bsd'
+ORGANIZATION = 'globalBotanical'
+DOMAIN = 'globalBotanical.com'
+SERVER_SHORT_NAME = 'dirSrv1.yyz'
+MASTER_SHORT_NAME = 'dirSrv1.yyz'
 
 
 ####################################################################################
@@ -32,7 +32,7 @@ BASE_DN_SERVER  = 'gtsName=' + SERVER_SHORT_NAME + ',ou=servers,' + BASE_DN
 
 BIND_URI = 'ldapi://' #+ MASTER_FQDN
 BIND_DN  = 'uid=serverAuth,ou=bindAccounts,gtsName=' + SERVER_SHORT_NAME + ',ou=servers,' + BASE_DN
-BIND_PW  = 'D4dTednGD2ms'
+BIND_PW  = 'g6pRbXaW9bWH'
 
 USER_DN_FMT  = 'uid={0},ou=users,' + BASE_DN
 GROUP_DN_FMT = 'cn={0},ou=groups,' + BASE_DN
