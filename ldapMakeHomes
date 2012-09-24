@@ -10,9 +10,9 @@ from ldapConf import *
 from ldapUtil import *
 
 
-####################################################################################
+###################################################################################
 # global constants
-####################################################################################
+###################################################################################
 version="%prog: 2012-09-03)"
 modifiedBy="Garry Thuna"
 
@@ -31,11 +31,11 @@ parser.add_option("-v", "--verbose", action="store_true", dest="verbose", defaul
 (options, args) = parser.parse_args()
 
 
-####################################################################################
+###################################################################################
 # bind to the ldap server 
 #     do the preliminary procssing of users and groups
 #     do the preliminary procssing of workspaces
-####################################################################################
+###################################################################################
 con = ldap.initialize(BIND_URI)
 #con.start_tls_s()
 con.simple_bind_s(BIND_DN, BIND_PW)
@@ -56,9 +56,9 @@ groups,                \
 con.unbind_s()
 
 
-####################################################################################
+###################################################################################
 # set up the homes
-####################################################################################
+###################################################################################
 smbConf = ''  #string in which to accumulate the samba share definitions
 for u in users:
     dn, attrs = u
@@ -98,7 +98,7 @@ for u in users:
         print >> sys.stderr, '  *** Error (re)creating directory: ' + userDir
     if options.verbose: 
         print '    setting ownership and permissions on: ' + userDir
-    setOwnerGroupPerms(userDir, attrs['uidNumber'][0], 'anonymous', 0500)
+    setOwnerGroupPerms(userDir, attrs['uidNumber'][0], 'void', 0500)
 
     # create user's home/personal directory
     homeDir = os.path.join(userDir, SAMBA_USER_HOME)
@@ -109,7 +109,7 @@ for u in users:
         print >> sys.stderr, '  *** Error (re)creating directory: ' + homeDir
     if options.verbose: 
         print '    setting ownership and permissions on: ' + homeDir
-    setOwnerGroupPerms(homeDir, attrs['uidNumber'][0], 'anonymous', 02700)
+    setOwnerGroupPerms(homeDir, attrs['uidNumber'][0], 'void', 02700)
 
     # determine the unique set of workspaces that the user can access
     accessibleWsNames= list()

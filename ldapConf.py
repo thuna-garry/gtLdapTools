@@ -2,18 +2,16 @@
 
 import os
 
-####################################################################################
+###################################################################################
 # global constants
-####################################################################################
+###################################################################################
 modifiedOn="2012-09-03"
 modifiedBy="Garry Thuna"
 
 
-################################################################################
-####
+###################################################################################
 # local server specific constants
-################################################################################
-####
+###################################################################################
 LOCAL_OS = 'bsd'                #must be either 'linux' or 'bsd'
 ORGANIZATION = 'globalBotanical'
 DOMAIN = 'globalBotanical.com'
@@ -21,9 +19,9 @@ SERVER_SHORT_NAME = 'dirSrv1.yyz'
 MASTER_SHORT_NAME = 'dirSrv1.yyz'
 
 
-####################################################################################
+###################################################################################
 # directory (domain) constants
-####################################################################################
+###################################################################################
 SERVER_FQDN = SERVER_SHORT_NAME + '.' + DOMAIN
 MASTER_FQDN = MASTER_SHORT_NAME + '.' + DOMAIN
 
@@ -42,20 +40,48 @@ MIN_UID_NUMBER = 7002    #7001=admin
 MIN_GID_NUMBER = 6002    #6001=staff
 
 
-####################################################################################
+###################################################################################
 # OS specific constants
-####################################################################################
+###################################################################################
 GT_TOOLS_DIR = os.path.dirname(os.path.realpath(__file__ ))
 
 TMP_DIR = '/tmp'
-OPENLDAP_DIR = '/etc/openldap'
+OPENLDAP_DIR = '/usr/local/etc/openldap'
 
 
-####################################################################################
+###################################################################################
+# acl templates
+###################################################################################
+ACL_NFSV4_WORKSPACE = '{tag}:{qualifier}:rwxpD-a-R-----:fd----:allow'
+ACL_NFSV4_WORKSPACE_TRAILER = '''
+        everyone@:full_set:fd----:deny
+           owner@:--------------:fd----:allow
+           group@:--------------:fd----:allow
+        everyone@:--------------:fd----:allow
+   '''
+
+ACL_NFSV4_USERDIR = '''
+           owner@:{qualifier}:r-x---a-R-----:fd----:allow
+        everyone@:full_set:fd----:deny
+           group@:--------------:fd----:allow
+        everyone@:--------------:fd----:allow
+   '''
+
+ACL_NFSV4_HOMEDIR = '''
+           owner@:{qualifier}:rwxpDda-R-c---:fd----:allow
+        everyone@:full_set:fd----:deny
+           group@:--------------:fd----:allow
+        everyone@:--------------:fd----:allow
+   '''
+
+
+###################################################################################
 # these are only needed if server will be running samba
-####################################################################################
+###################################################################################
 #SAMBA_DOMAIN    = SERVER_SHORT_NAME
 #SAMBA_DOMAIN_DN = 'sambaDomainName=' + SAMBA_DOMAIN + ',' + BASE_DN
+
+SAMBA_SID_PREFIX = 'S-1-5-21-12345-1'
 
 SAMBA_ROOT      = '/data/sambaFiles'
 SAMBA_HOME      = SAMBA_ROOT + '/home'
@@ -70,7 +96,7 @@ SAMBA_HOME_TEMPLATE = '''
         browseable = no
         writable = yes
 
-        inherit acls = Yes
+        inherit acls = yes
         ;force create mode = 0660
         create mask = 0600
         ;force directory mode = 2770
@@ -91,8 +117,8 @@ SAMBA_HOME_TEMPLATE = '''
 
         vfs object = recycle
         recycle:repository = ''' + SAMBA_USER_HOME + '''/_recycleBin
-        recycle:keeptree = Yes
-        recycle:versions = Yes
+        recycle:keeptree = yes
+        recycle:versions = yes
         ;name = _recycleBin
         ;mode = KEEP_DIRECTORIES|VERSIONS|TOUCH
         ;maxsize = 0
@@ -110,7 +136,7 @@ SAMBA_WORKSPACE_TEMPLATE = '''
         browseable = no
         writable = yes
 
-        inherit acls = Yes
+        inherit acls = yes
         ;force create mode = 0660
         ;create mask = 0660
         force directory mode = 2770
@@ -131,8 +157,8 @@ SAMBA_WORKSPACE_TEMPLATE = '''
 
         vfs object = recycle
         recycle:repository = _recycleBin
-        recycle:keeptree = Yes
-        recycle:versions = Yes
+        recycle:keeptree = yes
+        recycle:versions = yes
         ;name = _recycleBin
         ;mode = KEEP_DIRECTORIES|VERSIONS|TOUCH
         ;maxsize = 0
@@ -144,11 +170,11 @@ SAMBA_WORKSPACE_TEMPLATE = '''
 
 
 
-####################################################################################
+###################################################################################
 # tls/ssl certificate setup
 #   certs can be specified here or picked up from the /etc/openldap/ldap.conf file
 #   (guess the python-ldap was compiled againt openLdap libraries)
-####################################################################################
+###################################################################################
 import ldap
 
 #-----------
@@ -169,10 +195,10 @@ ldap.set_option(ldap.OPT_X_TLS_CERTFILE,   OPENLDAP_DIR + "/certs/"   + SERVER_F
 ldap.set_option(ldap.OPT_X_TLS_KEYFILE,    OPENLDAP_DIR + "/certs/"   + SERVER_FQDN  + "-key.pem")
 
 
-####################################################################################
+###################################################################################
 # if this file is run as a python script then have it simply print out the value
 # of its variables in shell (bash) format
-####################################################################################
+###################################################################################
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:

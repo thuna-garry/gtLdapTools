@@ -43,7 +43,7 @@ positional                                                         Notes
         (d)elete -----+||||||||:|+----- (d)irectory inherit        - A directory with "r" but no "x" will prevent access to named children
    read (a)ttrib ------+|||||||:+------ (f)ile inherit             - To see anything more than a fileObj's name it must have "a" 
   write (A)ttrib -------+||||||                                    
-    (R)ead xattr --------+|||||                                    - To delete a fileObj parent must have "w" or "D" and file obj must have "a"
+    (R)ead xattr --------+|||||                                    - To delete a fileObj parent must have "w" or "D" and fileObj must have "a"
    (W)rite xattr ---------+||||                                    - If parent denies "D" no child deletion will occur even if parent allows "w"
       read a(c)l ----------+|||                                    - If fileObj has "d", and it can be seen by user, then it can be deleted
      write a(C)l -----------+||                                       regardless of parent's "w", "D", or "a" settings (including denials)
@@ -54,4 +54,3 @@ positional                                                         Notes
                                                                    - To rename a fileObj both deletion and creation of fileObj are required
 
                                                                    - To append data to a file it must have both "r" and "w"
-                                                                    

@@ -127,7 +127,7 @@ for ws in workspaces:
     wsDir = os.path.join(SAMBA_WORKSPACE, server)
     setOwnerGroupPerms(wsDir, 'root', 'staff', 00710)
     wsDir = os.path.join(SAMBA_WORKSPACE, server, path)
-    setOwnerGroupPerms(wsDir, attrs['gtwsOwnerUid'][0], 'anonymous', 02770)
+    setOwnerGroupPerms(wsDir, attrs['gtwsOwnerUid'][0], 'void', 02770)
 
     # for the wsDir: assemble the acls in a temp file
     fd, fname = tempfile.mkstemp()

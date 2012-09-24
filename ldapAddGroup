@@ -147,7 +147,7 @@ ur.append( ('objectClass', ['sambaGroupMapping', 'posixGroup']) )
 ur.append( ('cn',                   [gid])                                                      )  
 ur.append( ('gidNumber',            ['{0}'.format(gidNumber)])                                  )  
 ur.append( ('sambaGroupType',       ['2'])                                                      )  
-ur.append( ('sambaSID',             ['S-1-5-21-12345-1-{0}'.format(gidNumber * 2 + 1)])         ) 
+ur.append( ('sambaSID',             ['{0}-{1}'.format(SAMBA_SID_PREFIX, gidNumber * 2 + 1)])    ) 
 ur.append( ('displayName',          [displayName])                                              )
 ur.append( ('description',          [description])                                              )
 
