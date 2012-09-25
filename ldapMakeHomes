@@ -98,7 +98,7 @@ for u in users:
         print >> sys.stderr, '  *** Error (re)creating directory: ' + userDir
     if options.verbose: 
         print '    setting ownership and permissions on: ' + userDir
-    setOwnerGroupPerms(userDir, attrs['uidNumber'][0], 'void', 0500)
+    setOwnerGroupPerms(userDir, attrs['uidNumber'][0], MEMBERLESS_GID, 0500)
 
     # create user's home/personal directory
     homeDir = os.path.join(userDir, SAMBA_USER_HOME)
@@ -109,7 +109,7 @@ for u in users:
         print >> sys.stderr, '  *** Error (re)creating directory: ' + homeDir
     if options.verbose: 
         print '    setting ownership and permissions on: ' + homeDir
-    setOwnerGroupPerms(homeDir, attrs['uidNumber'][0], 'void', 02700)
+    setOwnerGroupPerms(homeDir, attrs['uidNumber'][0], MEMBERLESS_GID, 02700)
 
     # determine the unique set of workspaces that the user can access
     accessibleWsNames= list()

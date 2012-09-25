@@ -13,6 +13,7 @@ modifiedBy="Garry Thuna"
 # local server specific constants
 ###################################################################################
 LOCAL_OS = 'bsd'                #must be either 'linux' or 'bsd'
+LOCAL_ACL = 'NFSv4'              #must be either 'posix' or 'NFSv4'
 ORGANIZATION = 'globalBotanical'
 DOMAIN = 'globalBotanical.com'
 SERVER_SHORT_NAME = 'dirSrv1.yyz'
@@ -39,6 +40,10 @@ MAIL_DOMAIN = DOMAIN
 MIN_UID_NUMBER = 7002    #7001=admin
 MIN_GID_NUMBER = 6002    #6001=staff
 
+ROOT_UID = 'admin'          #user to own all dirs/files not otherwise owned
+MEMBERLESS_GID = 'void'   #group that is promised never have any members
+MEMBERFULL_GID = 'staff'  #group that is the default for all users
+
 
 ###################################################################################
 # OS specific constants
@@ -52,6 +57,21 @@ OPENLDAP_DIR = '/usr/local/etc/openldap'
 ###################################################################################
 # acl templates
 ###################################################################################
+ACL_POSIX_WORKSPACE_TRAILER = '''
+        user::rwX
+        group::---
+        other::---
+        default:user::rwX
+        default:group::---
+        default:other::---
+    '''
+if LOCAL_OS.lower() == 'bsd':
+    ACL_POSIX_WORKSPACE_TRAILER += ''' 
+        mask::rwx
+        default:mask::rwx
+    '''
+
+
 ACL_NFSV4_WORKSPACE = '{tag}:{qualifier}:rwxpD-a-R-----:fd----:allow'
 ACL_NFSV4_WORKSPACE_TRAILER = '''
         everyone@:full_set:fd----:deny
@@ -206,6 +226,6 @@ if __name__ == "__main__":
     else:
         vars = [ x for x in dir() if x[0].isupper()]
     for var in vars:
-        lines = eval(var).replace("\n", "\\\n")
+        lines = str(eval(var)).replace("\n", "\\\n")
         print var + '="' + lines + '"'
 

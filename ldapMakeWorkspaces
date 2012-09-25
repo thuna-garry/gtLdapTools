@@ -73,22 +73,23 @@ for ws in workspaces:
             shareComment = attrs.get('description', ['no description supplied'])[0],
             sharePath    = wsDir
         )
-    # accumulate the share definition in a string
+
+    # determine the access lists for the workspace
     readList = []
     writeList = []
     for acl in attrs['gtwsACL']:
-        aclType, aclTarget, aclPerms = acl.split(':')
+        aclTag, aclTarget, aclPerms = acl.split(':')
         if aclPerms[1] == 'w':
-            if aclType.lower() == "group":
+            if aclTag.lower() == "group":
                 writeList.append('+' + aclTarget)
-            elif aclType.lower() == "user":
+            elif aclTag.lower() == "user":
                 writeList.append(aclTarget)
             else:
                 pass
         elif aclPerms[0] == 'r':
-            if aclType.lower() == "group":
+            if aclTag.lower() == "group":
                 readList.append('+' + aclTarget)
-            elif aclType.lower() == "user":
+            elif aclTag.lower() == "user":
                 readList.append(aclTarget)
             else:
                 pass
@@ -123,27 +124,19 @@ for ws in workspaces:
     if options.verbose:
         print '    setting ownership and permissions on: ' + wsDir
     wsDir = os.path.join(SAMBA_WORKSPACE)
-    setOwnerGroupPerms(wsDir, 'root', 'staff', 00710)
+    setOwnerGroupPerms(wsDir, ROOT_UID, MEMBERFULL_GID, 00510)
     wsDir = os.path.join(SAMBA_WORKSPACE, server)
-    setOwnerGroupPerms(wsDir, 'root', 'staff', 00710)
+    setOwnerGroupPerms(wsDir, ROOT_UID, MEMBERFULL_GID, 00510)
     wsDir = os.path.join(SAMBA_WORKSPACE, server, path)
-    setOwnerGroupPerms(wsDir, attrs['gtwsOwnerUid'][0], 'void', 02770)
+    setOwnerGroupPerms(wsDir, attrs['gtwsOwnerUid'][0], MEMBERLESS_GID, 02770)
 
     # for the wsDir: assemble the acls in a temp file
     fd, fname = tempfile.mkstemp()
     with open(fname, 'w') as f:
-        f.write( 'user::rwX\n'          )
-        f.write( 'group::---\n'         )
-        f.write( 'other::---\n'         )
-        f.write( 'default:user::rwX\n'  )
-        f.write( 'default:group::---\n' )
-        f.write( 'default:other::---\n' )
-        if LOCAL_OS.lower() == 'bsd':
-            f.write( 'mask::rwx\n'          )
-            f.write( 'default:mask::rwx\n'  )
         for acl in attrs['gtwsACL']:
             f.write( acl + '\n' )
             f.write( 'default:' + acl + '\n' )
+        f.write( ACL_POSIX_WORKSPACE_TRAILER )
     os.close(fd)
 
     # for the wsDir: apply the acls
