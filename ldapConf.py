@@ -5,7 +5,7 @@ import os
 ###################################################################################
 # global constants
 ###################################################################################
-modifiedOn="2012-09-03"
+modifiedOn="2012-09-26"
 modifiedBy="Garry Thuna"
 
 
@@ -13,6 +13,7 @@ modifiedBy="Garry Thuna"
 # local server specific constants
 ###################################################################################
 LOCAL_OS = 'bsd'                #must be either 'linux' or 'bsd'
+LOCAL_ACL = 'NFSv4'             #must be either 'posix' or 'NFSv4'
 ORGANIZATION = 'globalBotanical'
 DOMAIN = 'globalBotanical.com'
 SERVER_SHORT_NAME = 'dirSrv1.yyz'
@@ -28,9 +29,10 @@ MASTER_FQDN = MASTER_SHORT_NAME + '.' + DOMAIN
 BASE_DN         = 'o=' + ORGANIZATION
 BASE_DN_SERVER  = 'gtsName=' + SERVER_SHORT_NAME + ',ou=servers,' + BASE_DN
 
-BIND_URI = 'ldapi://'
+BIND_URI = 'ldap://' + MASTER_FQDN
 BIND_DN  = 'uid=serverAuth,ou=bindAccounts,gtsName=' + SERVER_SHORT_NAME + ',ou=servers,' + BASE_DN
 BIND_PW  = 'g6pRbXaW9bWH'
+BIND_TLS = True     
 
 USER_DN_FMT  = 'uid={0},ou=users,' + BASE_DN
 GROUP_DN_FMT = 'cn={0},ou=groups,' + BASE_DN
@@ -38,6 +40,10 @@ MAIL_DOMAIN = DOMAIN
 
 MIN_UID_NUMBER = 7002    #7001=admin
 MIN_GID_NUMBER = 6002    #6001=staff
+
+ROOT_UID = 'admin'        #user to own all dirs/files not otherwise owned
+MEMBERLESS_GID = 'void'   #group that is promised never have any members
+MEMBERFULL_GID = 'staff'  #group that is the default for all users
 
 
 ###################################################################################
@@ -52,7 +58,27 @@ OPENLDAP_DIR = '/usr/local/etc/openldap'
 ###################################################################################
 # acl templates
 ###################################################################################
-ACL_NFSV4_WORKSPACE = '{tag}:{qualifier}:rwxpD-a-R-----:fd----:allow'
+ACL_POSIX_WORKSPACE_VIEW =     '{tag}:{qualifier}:r-X \n default:{tag}:{qualifier}:r-X'
+ACL_POSIX_WORKSPACE_WORK =     '{tag}:{qualifier}:rwX \n default:{tag}:{qualifier}:rwX'
+ACL_POSIX_WORKSPACE_TRAVERSE = '{tag}:{qualifier}:--X \n default:{tag}:{qualifier}:--X'
+ACL_POSIX_WORKSPACE_TRAILER = '''
+        user::rwX
+        group::---
+        other::---
+        default:user::rwX
+        default:group::---
+        default:other::---
+    '''
+if LOCAL_OS.lower() == 'bsd':
+    ACL_POSIX_WORKSPACE_TRAILER += ''' 
+        mask::rwx
+        default:mask::rwx
+    '''
+
+
+ACL_NFSV4_WORKSPACE_VIEW =     '{tag}:{qualifier}:r-x---a-R-----:fd----:allow'
+ACL_NFSV4_WORKSPACE_WORK =     '{tag}:{qualifier}:rwxpD-a-R-----:fd----:allow'
+ACL_NFSV4_WORKSPACE_TRAVERSE = '{tag}:{qualifier}:--x-----------:-d----:allow'
 ACL_NFSV4_WORKSPACE_TRAILER = '''
         everyone@:full_set:fd----:deny
            owner@:--------------:fd----:allow
@@ -206,6 +232,6 @@ if __name__ == "__main__":
     else:
         vars = [ x for x in dir() if x[0].isupper()]
     for var in vars:
-        lines = eval(var).replace("\n", "\\\n")
+        lines = str(eval(var)).replace("\n", "\\\n")
         print var + '="' + lines + '"'
 

@@ -10,20 +10,20 @@ from ldapConf import *
 from ldapUtil import *
 
 
-###################################################################################
+##################################################################################
 # global constants
-###################################################################################
-version="%prog: 2012-09-03)"
+##################################################################################
+version="%prog: 2012-09-26"
 modifiedBy="Garry Thuna"
 
 
-###################################################################################
+##################################################################################
 # parse command line options
-###################################################################################
+##################################################################################
 usage = "usage: %prog [options] [uid1 [[uid2] [[...]]]" 
 description = "Ensures that the user's home directory exists, "  +\
               "that it has correct user, group and acl, and "  +\
-              "and sets up a subdirectory of symlinks for any workspace "  +\
+              "and sets up a subdirectory of links for any workspace "  +\
               "that the user has access to"
 parser = OptionParser(usage=usage, version=version, description=description)
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
@@ -31,13 +31,14 @@ parser.add_option("-v", "--verbose", action="store_true", dest="verbose", defaul
 (options, args) = parser.parse_args()
 
 
-###################################################################################
+##################################################################################
 # bind to the ldap server 
 #     do the preliminary procssing of users and groups
 #     do the preliminary procssing of workspaces
-###################################################################################
+##################################################################################
 con = ldap.initialize(BIND_URI)
-#con.start_tls_s()
+if BIND_TLS:
+    con.start_tls_s()
 con.simple_bind_s(BIND_DN, BIND_PW)
 
 groups,                \
@@ -56,9 +57,9 @@ groups,                \
 con.unbind_s()
 
 
-###################################################################################
+##################################################################################
 # set up the homes
-###################################################################################
+##################################################################################
 smbConf = ''  #string in which to accumulate the samba share definitions
 for u in users:
     dn, attrs = u
@@ -79,7 +80,7 @@ for u in users:
             sharePath    = userDir
         )
 
-    # were specific workspaces specified on the command line
+    # were specific users specified on the command line
     if len(args) > 0 and uid.lower() not in [a.lower() for a in args]:
         continue
 
@@ -96,9 +97,12 @@ for u in users:
     p = subprocess.Popen([ "mkdir", "-p", userDir ]); p.wait()
     if p.returncode:
         print >> sys.stderr, '  *** Error (re)creating directory: ' + userDir
+
+    # correct permissions
     if options.verbose: 
         print '    setting ownership and permissions on: ' + userDir
-    setOwnerGroupPerms(userDir, attrs['uidNumber'][0], 'void', 0500)
+    setOwnerGroupPerms(SAMBA_HOME, ROOT_UID, MEMBERFULL_GID, 00510)
+    setOwnerGroupPerms(userDir,    uid,      MEMBERLESS_GID, 02500)
 
     # create user's home/personal directory
     homeDir = os.path.join(userDir, SAMBA_USER_HOME)
@@ -107,9 +111,11 @@ for u in users:
     p = subprocess.Popen([ "mkdir", "-p", homeDir ]); p.wait()
     if p.returncode:
         print >> sys.stderr, '  *** Error (re)creating directory: ' + homeDir
+
+    # correct permissions
     if options.verbose: 
         print '    setting ownership and permissions on: ' + homeDir
-    setOwnerGroupPerms(homeDir, attrs['uidNumber'][0], 'void', 02700)
+    setOwnerGroupPerms(homeDir, uid, MEMBERLESS_GID, 02700)
 
     # determine the unique set of workspaces that the user can access
     accessibleWsNames= list()
@@ -137,7 +143,7 @@ for u in users:
             os.mkdir(serverDir)
         if options.verbose: 
             print '    setting ownership and permissions on: ' + serverDir
-        setOwnerGroupPerms(serverDir, attrs['uidNumber'][0], attrs['gidNumber'][0], 0500)
+        setOwnerGroupPerms(serverDir, uid, MEMBERLESS_GID, 0500)
 
         # write out the linkFile/URL
         wsDn, wsAttr = gtwsName2ws[gtwsName] 
@@ -147,7 +153,7 @@ for u in users:
         with open(linkFile, 'w') as f:
             f.write("[InternetShortcut]" + "\r\n")
             f.write("URL=file://" + serverAttrs['gtsFQDN'][0] + "/" + wsAttr['gtwsName'][0] + "\r\n")
-        setOwnerGroupPerms(linkFile, attrs['uidNumber'][0], attrs['gidNumber'][0], 0400)
+        setOwnerGroupPerms(linkFile, uid, MEMBERLESS_GID, 0400)
         linkFiles.append(linkFile)
 
     # remove links no longer available

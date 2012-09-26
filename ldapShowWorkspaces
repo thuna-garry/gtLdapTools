@@ -12,7 +12,7 @@ from ldapUtil import *
 ####################################################################################
 # global constants
 ####################################################################################
-version="%prog: 2012-09-03"
+version="%prog: 2012-09-26"
 modifiedBy="Garry Thuna"
 
 
@@ -37,7 +37,8 @@ parser.add_option("-s", "--server", action="store", type="string", dest="server"
 #     do the preliminary procssing of workspaces
 ####################################################################################
 con = ldap.initialize(BIND_URI)
-#con.start_tls_s()
+if BIND_TLS:
+    con.start_tls_s()
 con.simple_bind_s(BIND_DN, BIND_PW)
 
 groups,                \
