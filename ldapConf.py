@@ -28,7 +28,7 @@ MASTER_FQDN = MASTER_SHORT_NAME + '.' + DOMAIN
 BASE_DN         = 'o=' + ORGANIZATION
 BASE_DN_SERVER  = 'gtsName=' + SERVER_SHORT_NAME + ',ou=servers,' + BASE_DN
 
-BIND_URI = 'ldapi://' #+ MASTER_FQDN
+BIND_URI = 'ldapi://'
 BIND_DN  = 'uid=serverAuth,ou=bindAccounts,gtsName=' + SERVER_SHORT_NAME + ',ou=servers,' + BASE_DN
 BIND_PW  = 'g6pRbXaW9bWH'
 
