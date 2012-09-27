@@ -1,0 +1,264 @@
+provision virtual machine
+    independent disk for swap
+	another disk for /boot and /
+	all NIC must be intel E1000 type (vmnet3 not uppported)
+
+in ESXi console
+    Options | Advanced | General | Enable logging   ...  uncheck
+    Options | Advanced | General | Configuration Parameters  ... add the following
+	 isolation.tools.copy.disable    false
+         isolation.tools.paste.disable   false
+
+edit /etc/rc.conf
+    - check the network card settings
+	confirm that all network cards are functioning
+    - set the name of the server
+    - fix the date (if necessary) for ntpd
+    - edit /etc/ssh/sshd_config
+        PasswordAuthentication yes
+        PermitRootLogin yes
+    - restart sshd
+        service sshd restart
+
+ 
+install /usr/ports/ftp/wget
+install /usr/ports/misc/compat6x
+
+install vmware tools
+    mount -t cd9660 /dev/cd0 /mnt
+	needs perl (which is why we did wget first, it depends on perl)
+
+	At this point, accept all the defaults (press enter to all questions) until
+	you are returned to a shell prompt.  Ignore the .failed. service start, and
+	the fact that it says the process has been aborted.
+
+    Next, you need to use your favourite editor to edit the file
+	/usr/local/etc/rc.d/vmware-tools.sh and locate the following 3 lines of code
+	(they are separated by a few lines of code but are all in the same general area):
+
+    if [ "$vmdb_answer_VMHGFS_CONFED" = 'yes' ]; then
+    if [ "$vmdb_answer_VMMEMCTL_CONFED" = 'yes' ]; then
+    if [ "$?" -eq 0 -a "$vmdb_answer_VMXNET_CONFED" = 'yes' ]; then
+
+    There will also be (not grouped together like the above line) the following line
+	in the file:
+
+    if [ "$vmdb_answer_VMBLOCK_CONFED" = 'yes' ]; then
+
+    Change each of the above lines where it says yes to be xyes (add the letter X before
+	the word yes) . then save&exit the file.
+
+    Now we need to tell vmtools that it is configured by typing the following:
+
+    rm /etc/vmware-tools/not_configured
+
+    Now you can restart vmtools without rebooting like so:
+
+    /usr/local/etc/rc.d/vmware-tools.sh restart
+	
+edit /etc/hosts
+    - set the name of the server
+
+PATCH - clock stops with ESX5 and FreeBsd 9.0
+    /etc/sysctl.conf kern.timecounter.hardware=ACPI-fast
+	
+ntpd - initial time sync
+    /etc/ntp.conf - comment out generic pool address and use country specific
+	
+install /usr/ports/net/rsync
+install /usr/ports/misc/mc
+install /usr/ports/shells/bash
+install /usr/ports/sysutils/tmux
+install /usr/ports/sysutils/screen
+install /usr/ports/devel/git
+install /usr/ports/net/nss-ldap
+install /usr/ports/net/openldap-server
+install /usr/ports/net/py-ldap2
+
+ssh 
+    create local authorized_keys file
+	put admin keys in
+	
+zfs
+    - create a partition table
+        gpart create -s GPT /dev/da1
+    - partition any mirrored or raidz drives with gpt (use gpart)
+        lop off 2048 sectors from the front and 100M from the size
+        example for a 2T western digital disk
+           gpart add -t freebsd-zfs -b 2048 -s 3906822320 -l zfsDisk00 /dev/da1
+    - zpool create data raidz da3p1 da4p1 da5p1
+    - zpool add data cache da2
+    - zfs create data 
+    - zfs set aclinherit=passthrough-x data
+          set atime=off data
+    - edit rc.conf 
+        zfs_enable="YES"
+
+openldap
+    - add to rc.conf
+        slapd_enable="YES"
+        slapd_flags='-h "ldapi://%2fvar%2frun%2fopenldap%2fldapi/ ldap://0.0.0.0/"'
+        slapd_sockets="/var/run/openldap/ldapi"
+        #slapd_cn_config="YES"
+    - start it up just to ensure that it will run, then shut it down
+        service slapd startr; service slapd stop
+    - prep the database directories
+        cd /var/db/openldap-data
+        rm *
+        mkdir directoryManagement globalBotanical
+        cp /usr/local/etc/openldap/DB_CONFIG.example .
+        cp DB_CONFIG.example directoryManagement/DB_CONFIG
+        cp DB_CONFIG.example globalBotanical/DB_CONFIG
+    - copy openldap config from a working server to use as a template
+        copy the custom schema from the template gt *, samba*
+        copy the certs and cacerts directories as templates
+        copy the convert directory
+    - certs
+        deploy the correct certificates for the server
+            cd /tmp
+            tar xvzf dirSrv1.yyz.globalBotanical.com.tgz
+            cp globalBotanical-cacert.pem        /usr/local/etc/openldap/cacerts/
+            cp dirSrv1.yyz.globalBotanical.com-* /usr/local/etc/openldap/certs/
+            cd /usr/local/etc/openldap
+            chmod 555 cacerts;  chown -R root:ldap certs; chmod 550 certs;
+            chmod 444 cacerts/*.pem; sh cacerts/cacertdir_rehash cacerts
+            chmod 444 certs/*-cert.pem
+            chmod 440 certs/*-key.pem
+    - convert/slapd.conf
+        - check paths on all includes
+        - check paths for all 'directory' directives
+    - copy convert/slapd.conf to /usr/local/etc/openldap
+        ln /usr/local/etc/openldap/convert/slapd.conf /usr/local/etc/openldap
+    - copy ldif data from working server (skip if this is a replicant) 
+        ./sampleSchemaConversionScript.sh <n>.ldif
+        slapadd -v -n <n> -l <n>.ldif.gt
+    - edit /usr/local/etc/openldap/ldap.conf
+        URI ldap://dirSrv1.yyz.globalbotanical.com
+        BASE o=globalBotanical
+        TLS_CACERTDIR /usr/local/etc/openldap/cacerts
+    - start ldap and test (using default host and base from /usr/local/etc/openldap/ldap.conf)
+        service slapd start
+        ldapsearch -D 'cn=root,o=globalBotanical' \
+                   -w 'password' \
+                   -ZZ
+        ldapsearch -D 'cn=root,cn=directoryManagement' \
+                   -w 'password' \
+                   -ZZ
+    - once working -- cleanup
+        - comment out any simple/plaintext root passwords in slapd.conf
+        - adjust logging/debug output
+        - switch to cn=config
+            cd /usr/local/etc/openldap/
+            rm slapd.conf
+            cd convert
+            ./convert.sh
+            ./deploy.sh
+        - adjust /etc/rc.conf, uncomment 
+            slapd_cn_config="YES"
+        - restart and retest as above
+
+nss-ldap
+    - go to random.org/passwords and generate 12 character alphanumeric password
+    - set password on uid=serverAuth,ou=bindAccounts,gtsName=<server>,ou=servers,o=globalBotanical
+    - add server dn to cn=serverAuth,ou=accessGroups,ou=servers,o=globalBotanical
+    - test access using the server bind account
+        ldapsearch -H 'ldap://dirSrv1.yyz.globalBotanical.com' \
+                   -D 'uid=serverAuth,ou=bindAccounts,gtsName=<serverName>,ou=servers,o=globalBotanical' \
+                   -w '<password>' \
+                   -b 'o=globalBotanical' \
+                   -ZZ '(uid=<someUser>)' mail
+    - edit /usr/local/etc/nss_ldap.conf and append
+        ####################################################
+        # modified by gthuna 201207023
+        ####################################################
+        # Don't understand the following behaviour
+        # if we only use the unix domain socket then we don't
+        #    get the correct answer when doing 'id <user>' and
+        #    it takes the bind_timelimit to connect (thought that
+        #    it might have been a malformed uri for the socket
+        #    but doeen't seem to be the case
+        # if we also have open an ldap or ldaps port then we
+        #    do get the right answer to an 'id <user>' and the
+        #    response is instantaneous
+        # if we force tls (with security statement in slapd.conf)
+        #    then the 'id <user>' fails to bind when uxix domain
+        #    socket is used (but an ldapsearch which explicitly
+        #    uses the unix domain socket and specifies the ZZ option
+        #    will succeed.
+        # So the desired option is to use unix domain sockets with TLS
+        # but as this doesn't seem to work we will instead use TCP
+        # sockets with TLS.
+        ####################################################
+        
+        #uri ldapi://%2fvar%2frun%2fopenldap%2fldapi/
+        uri ldap://dirSrv1.yyz.globalBotanical.com/
+        
+        ssl start_tls
+        tls_cacerdir /usr/local/etc/openldap/cacerts
+        
+        base o=globalBotanical
+        binddn uid=serverAuth,ou=bindAccounts,gtsName=dirSrv1.yyz,ou=servers,o=globalBotanical
+        bindpw <thePassword>
+        
+        bind_policy soft
+        bind_timelimit 3
+        timelimit 3
+    - edit /etc/nsswitch.conf
+        group: files ldap
+        passwd: files ldap
+    - check for interference with objects owned by local staff group
+        find / -group 20
+        edit - /etc/group
+            comment out group 'staff:*:20'
+    - test (check thouroughly that the user and group number are as expected)
+        id <some userId>
+        getent passwd
+        getent group
+ 
+
+gtLdapTools
+    - get the gtLdapTools from github
+    - edit the conf file /data/disks/gtLdapTools/ldapConf.py
+    - set the BIND_PW the same as in nss_ldap.conf
+      
+dataSambaFiles volume
+    - create a ZFS volume for holding a UFS filesystem
+        zfs create -V 750G data/sambaFiles
+        newfs /dev/zvol/data/sambaFiles
+        mkdir /data/sambaFiles
+        touch /data/sambaFiles/FILE_SYSTEM_NOT_MOUNTED
+    - copy /etc/rc.d/dataSambaFiles from another BSD server
+    - edit /etc/fstab, append
+        /dev/zvol/data/sambaFiles  /data/sambaFiles  ufs  noauto,rw,noatime,acls  0  1
+    - mount the volume
+        mount /data/sambaFiles
+
+sambaFiles
+    - run ldapMakeWorkspaces
+    - run ldapMakeWorkspaces
+
+install /usr/ports/net/samba36
+    - options: ldap, acl_support, popt, ipv6
+    - copy an /usr/local/etc/smb.conf file from some other server
+        edit /usr/local/etc/smb.conf and adjust for local server name, domain, etc
+    - go to random.org/passwords and generate 12 character alphanumeric password
+        run smbpasswd -w <randomPassword>
+        update the password for the samba account in ldap
+    - add server dn to cn=sambaService,ou=accessGroups,ou=servers,o=globalBotanical
+    - test access from the server bind account
+        ldapsearch -H 'ldap://dirSrv1.yyz.globalBotanical.com' \
+                   -D 'uid=samba,ou=bindAccounts,gtsName=<serverName>,ou=servers,o=globalBotanical' \
+                   -w '<password>' \
+                   -b 'o=globalBotanical' \
+                   -ZZ '(uid=<someUser>)' sambaNTPassword
+    - edit /etc/rc.conf, add
+        samba_enable="YES"
+        smbd_enable="YES"
+        samba_config="/usr/local/etc/smb.conf"
+
+
+
+install /usr/ports/www/apache22
+
+
+
