@@ -13,7 +13,7 @@ modifiedBy="Garry Thuna"
 # local server specific constants
 ###################################################################################
 LOCAL_OS = 'bsd'                #must be either 'linux' or 'bsd'
-LOCAL_ACL = 'NFSv4'             #must be either 'posix' or 'NFSv4'
+LOCAL_ACL = 'posix'             #must be either 'posix' or 'NFSv4'
 ORGANIZATION = 'globalBotanical'
 DOMAIN = 'globalBotanical.com'
 SERVER_SHORT_NAME = 'dirSrv1.yyz'
@@ -122,7 +122,7 @@ SAMBA_HOME_TEMPLATE = '''
         browseable = no
         writable = yes
 
-        inherit acls = yes
+        inherit acls = no
         ;force create mode = 0660
         create mask = 0600
         ;force directory mode = 2770
@@ -135,13 +135,11 @@ SAMBA_HOME_TEMPLATE = '''
         follow symlinks = yes
         wide links = yes
 
-        ;valid users = %S
-        ;valid users = MYDOMAIN\%S
-
         ;oplocks = False
         ;level2 oplocks = False
 
-        vfs object = recycle
+        vfs object = recycle, zfsacl
+
         recycle:repository = ''' + SAMBA_USER_HOME + '''/_recycleBin
         recycle:keeptree = yes
         recycle:versions = yes
@@ -151,6 +149,11 @@ SAMBA_HOME_TEMPLATE = '''
         ;exclude = *.tmp|*.temp|*.o|*.obj|~$*|*.~??|*.log|*.trace
         ;excludedir = /tmp|/temp|/cache
         ;noversions = *.doc|*.ppt|*.dat|*.ini
+
+        acl check permissions = False
+        nfs4: mode = special
+        nfs4: chown = true
+        nfs4: acedup = merge
 
 '''
 
@@ -162,7 +165,7 @@ SAMBA_WORKSPACE_TEMPLATE = '''
         browseable = no
         writable = yes
 
-        inherit acls = yes
+        inherit acls = no
         ;force create mode = 0660
         ;create mask = 0660
         force directory mode = 2770
@@ -175,13 +178,11 @@ SAMBA_WORKSPACE_TEMPLATE = '''
         follow symlinks = yes
         wide links = yes
 
-        ;valid users = %S
-        ;valid users = MYDOMAIN\%S
-
         ;oplocks = False
         ;level2 oplocks = False
 
-        vfs object = recycle
+        vfs object = recycle, zfsacl
+
         recycle:repository = _recycleBin
         recycle:keeptree = yes
         recycle:versions = yes
@@ -191,6 +192,11 @@ SAMBA_WORKSPACE_TEMPLATE = '''
         ;exclude = *.tmp|*.temp|*.o|*.obj|~$*|*.~??|*.log|*.trace
         ;excludedir = /tmp|/temp|/cache
         ;noversions = *.doc|*.ppt|*.dat|*.ini
+
+        acl check permissions = False
+        nfs4: mode = special
+        nfs4: chown = true
+        nfs4: acedup = merge
 
 '''
 

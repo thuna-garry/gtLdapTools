@@ -154,7 +154,7 @@ for ws in workspaces:
                 elif aclAccess == 'work':
                     f.write(ACL_POSIX_WORKSPACE_WORK.format(tag=aclTag, qualifier=aclTarget) + '\n' )
             if not didMemberfull:
-                f.write(ACL_POSIX_WORKSPACE_TRAVERSE.format(tag=aclTag, qualifier=MEMBERFILL_GID) + '\n' )
+                f.write(ACL_POSIX_WORKSPACE_TRAVERSE.format(tag='group', qualifier=MEMBERFULL_GID) + '\n' )
             f.write(ACL_POSIX_WORKSPACE_TRAILER + '\n' )
 
         else: #LOCAL_ACL == 'NFSv4':
@@ -167,7 +167,7 @@ for ws in workspaces:
                 elif aclAccess == 'work':
                     f.write(ACL_NFSV4_WORKSPACE_WORK.format(tag=aclTag, qualifier=aclTarget) + '\n' )
             if not didMemberfull:
-                f.write(ACL_NFSV4_WORKSPACE_TRAVERSE.format(tag=aclTag, qualifier=MEMBERFILL_GID) + '\n' )
+                f.write(ACL_NFSV4_WORKSPACE_TRAVERSE.format(tag='group', qualifier=MEMBERFULL_GID) + '\n' )
             f.write(ACL_NFSV4_WORKSPACE_TRAILER + '\n' )
     os.close(fd)
 
@@ -214,4 +214,5 @@ for ws in workspaces:
 # write out the smb conf for workspaces
 with open(os.path.join(SAMBA_ROOT, SAMBA_WORKSPACE_CONF), 'w') as f:
     f.write(smbConf)
+setOwnerGroupPerms(os.path.join(SAMBA_ROOT, SAMBA_WORKSPACE_CONF), '0', '0', 00664)
 

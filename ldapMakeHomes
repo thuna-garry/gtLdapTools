@@ -143,7 +143,7 @@ for u in users:
             os.mkdir(serverDir)
         if options.verbose: 
             print '    setting ownership and permissions on: ' + serverDir
-        setOwnerGroupPerms(serverDir, uid, MEMBERLESS_GID, 0500)
+        setOwnerGroupPerms(serverDir, uid, MEMBERLESS_GID, 00500)
 
         # write out the linkFile/URL
         wsDn, wsAttr = gtwsName2ws[gtwsName] 
@@ -153,7 +153,7 @@ for u in users:
         with open(linkFile, 'w') as f:
             f.write("[InternetShortcut]" + "\r\n")
             f.write("URL=file://" + serverAttrs['gtsFQDN'][0] + "/" + wsAttr['gtwsName'][0] + "\r\n")
-        setOwnerGroupPerms(linkFile, uid, MEMBERLESS_GID, 0400)
+        setOwnerGroupPerms(linkFile, uid, MEMBERLESS_GID, 00400)
         linkFiles.append(linkFile)
 
     # remove links no longer available
@@ -191,7 +191,7 @@ for u in users:
 #        os.mkdir(staticDir)
 #    if options.verbose: 
 #        print '    setting ownership and permissions on: ' + staticDir
-#    setOwnerGroupPerms(staticDir, attrs['uidNumber'][0], attrs['gidNumber'][0], 0500)
+#    setOwnerGroupPerms(staticDir, attrs['uidNumber'][0], attrs['gidNumber'][0], 00500)
 #
 #    # write out the static linkFile/URL
 #    linkFile = os.path.join(staticDir, 'changePassword.url')
@@ -200,9 +200,10 @@ for u in users:
 #    with open(linkFile, 'w') as f:
 #        f.write("[InternetShortcut]" + "\r\n")
 #        f.write("URL=https://dirsrv1peg.yyc.avmaxgroup.com/changePassword.html" + "\r\n")
-#    setOwnerGroupPerms(linkFile, attrs['uidNumber'][0], attrs['gidNumber'][0], 0400)
+#    setOwnerGroupPerms(linkFile, attrs['uidNumber'][0], attrs['gidNumber'][0], 00400)
 
 # write out the smb conf for homes
 with open(os.path.join(SAMBA_ROOT, SAMBA_HOME_CONF), 'w') as f:
     f.write(smbConf)
+setOwnerGroupPerms(os.path.join(SAMBA_ROOT, SAMBA_HOME_CONF), '0', '0', 00664)
 
