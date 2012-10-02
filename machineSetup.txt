@@ -9,23 +9,98 @@ in ESXi console
 	 isolation.tools.copy.disable    false
          isolation.tools.paste.disable   false
 
+
 edit /etc/rc.conf
     - check the network card settings
 	confirm that all network cards are functioning
     - set the name of the server
-    - fix the date (if necessary) for ntpd
+
+
+edit /etc/hosts
+    - set the name of the server
+
+
+ssh
     - edit /etc/ssh/sshd_config
         PasswordAuthentication yes
         PermitRootLogin yes
+    - edit /etc/rc.conf
+        sshd_enable="YES"   
+    - create root's authorized_keys file
+	put admin keys in
     - restart sshd
         service sshd restart
+    
 
- 
+ntpd - initial time sync
+    - /etc/ntp.conf - comment out generic pool address and use country specific
+    - fix the date (if necessary) for ntpd
+    - edit /etc/rc.conf
+        ntpd_enable="YES"
+	
+
+edit /etc/csh.cshrc
+   cat <<-__EOF__ >> /etc/csh.cshrc
+	# keep command history
+	set history = 1000
+	set savehist = 1000
+
+	# file completion
+	set filec                       # enable auto-complete
+	set nobeep                      # stop it beeping
+	set autolist=true               # List matches when autocompleting
+	set fignore = '.o'              # ignore *.o files for file completion
+
+	# prompting
+	set promptchars="%#"            # '%' prompt for normal user; '#' for root/su
+	set prompt="[%n@%m %/]%# "      # /path/to/cwd{cmd number}%
+
+	# spelling correction
+	#set correct=all
+
+	# useful key bindins
+	bindkey "^W" backward-delete-word
+	bindkey -k up history-search-backward
+	bindkey -k down history-search-forward
+	bindkey "^?" backward-delete-char
+	bindkey "\e[3~" delete-char
+	bindkey "\e[1~" beginning-of-line
+	bindkey "\e[4~" end-of-line
+
+	# aliases
+	alias h         history 100
+	alias j         jobs -l
+	alias la        ls -aG
+	alias lf        ls -FAG
+	alias ll        ls -lAG
+	__EOF__
+
+
+edit ~/.cshrc
+   mv ~/.cshrc ~/.cshrc.orig
+   cat <<-__EOF__ >> ~/.cshrc
+	# A righteous umask
+	umask 22
+
+	set path = (/sbin /bin /usr/sbin /usr/bin /usr/local/sbin /usr/local/bin $HOME/
+	bin)
+
+	setenv  EDITOR  vi
+	setenv  PAGER   more
+	setenv  BLOCKSIZE       K
+	__EOF__
+
+
 install /usr/ports/ftp/wget
-install /usr/ports/misc/compat6x
+install /usr/ports/editors/vim
+
+vim
+    - mv /usr/bin/vi /usr/bin/vi.orig
+    - ln /usr/local/bin/vim /usr/bin/vi
 
 install vmware tools
-    mount -t cd9660 /dev/cd0 /mnt
+    - install /usr/ports/misc/compat6x
+    - mount -t cd9660 /dev/cd0 /mnt
 	needs perl (which is why we did wget first, it depends on perl)
 
 	At this point, accept all the defaults (press enter to all questions) until
@@ -56,15 +131,11 @@ install vmware tools
 
     /usr/local/etc/rc.d/vmware-tools.sh restart
 	
-edit /etc/hosts
-    - set the name of the server
 
 PATCH - clock stops with ESX5 and FreeBsd 9.0
     /etc/sysctl.conf kern.timecounter.hardware=ACPI-fast
 	
-ntpd - initial time sync
-    /etc/ntp.conf - comment out generic pool address and use country specific
-	
+
 install /usr/ports/net/rsync
 install /usr/ports/misc/mc
 install /usr/ports/shells/bash
@@ -75,24 +146,74 @@ install /usr/ports/net/nss-ldap
 install /usr/ports/net/openldap-server
 install /usr/ports/net/py-ldap2
 
-ssh 
-    create local authorized_keys file
-	put admin keys in
-	
-zfs
-    - create a partition table
-        gpart create -s GPT /dev/da1
+install /usr/ports/sysutils/smartmontools
+    To check the status of drives, use the following:
+
+        /usr/local/sbin/smartctl -a /dev/ad0    for first ATA/SATA drive
+        /usr/local/sbin/smartctl -a /dev/da0    for first SCSI drive
+        /usr/local/sbin/smartctl -a /dev/ada0   for first SATA drive
+
+    To include drive health information in your daily status reports,
+    add a line like the following to /etc/periodic.conf:
+        daily_status_smart_devices="/dev/ad0 /dev/da0"
+    substituting the appropriate device names for your SMART-capable disks.
+
+    To enable drive monitoring, you can use /usr/local/sbin/smartd.
+    A sample configuration file has been installed as
+    /usr/local/etc/smartd.conf.sample
+    Copy this file to /usr/local/etc/smartd.conf and edit appropriately
+
+    To have smartd start at boot
+        echo 'smartd_enable="YES"' >> /etc/rc.conf
+
+
+create partition tables
+    foreach i (da2 da3 da4 da5 da6 da7 da8)
+        gpart create -s GPT $i
+    end
+    gpart show da2 da3 da4 da5 da6 da7 da8
+
+
+partition drives
     - partition any mirrored or raidz drives with gpt (use gpart)
-        lop off 2048 sectors from the front and 100M from the size
-        example for a 2T western digital disk
-           gpart add -t freebsd-zfs -b 2048 -s 3906822320 -l zfsDisk00 /dev/da1
-    - zpool create data raidz da3p1 da4p1 da5p1
-    - zpool add data cache da2
-    - zfs create data 
-    - zfs set aclinherit=passthrough-x data
-          set atime=off data
-    - edit rc.conf 
+        diskinfo da2 da3 da4 da5 da6 da7 da8
+            da2     512     2000398934016   3907029168      0       0       243201  255     63
+            da3     512     2000398934016   3907029168      0       0       243201  255     63
+            da4     512     2000398934016   3907029168      0       0       243201  255     63
+            da5     512     2000398934016   3907029168      0       0       243201  255     63
+            da6     512     2000398934016   3907029168      0       0       243201  255     63
+            da7     512     60022480896     117231408       0       0       7297    255     63
+            da8     512     60022480896     117231408       0       0       7297    255     63
+    
+        start at 1M, leave 100M off the end
+        1M = 2048     blocks
+        100M = 204800 blocks
+    
+        # data partitions
+        set d = 0
+        foreach i (da2 da3 da4 da5 da6)
+            set numSects = `diskinfo $i | awk '{print $4 - 2048 - 204800}'`
+            set d = `expr $d + 1`
+            gpart add -b 2048 -s $numSects -t freebsd-zfs -l zfsData0$d $i
+        end
+    
+        # log partitions
+        set d = 0
+        foreach i (da7 da8)
+            set numSects = `diskinfo $i | awk '{print $4 - 2048 - 204800}'`
+            set d = `expr $d + 1`
+            gpart add -b 2048 -s $numSects -t freebsd-zfs -l zfsLog$d $i
+        end
+
+zfs
+    - create zfs pool
+        zpool create data raidz da2p1 da3p1 da4p1 da5p1 da6p1 log mirror da7p1 da8p1 cache da9
+        (backup volumes)   zfs create -o dedup=sha256 -o compression=gzip data
+        (file server vols) zfs create -o aclinherit=passthrough-x         data
+        zfs set atime=off data
+    - edit /etc/rc.conf 
         zfs_enable="YES"
+
 
 openldap
     - add to rc.conf
@@ -156,6 +277,7 @@ openldap
         - adjust /etc/rc.conf, uncomment 
             slapd_cn_config="YES"
         - restart and retest as above
+
 
 nss-ldap
     - go to random.org/passwords and generate 12 character alphanumeric password
@@ -221,21 +343,25 @@ gtLdapTools
     - edit the conf file /data/disks/gtLdapTools/ldapConf.py
     - set the BIND_PW the same as in nss_ldap.conf
       
+
 dataSambaFiles volume
     - create a ZFS volume for holding a UFS filesystem
         zfs create -V 750G data/sambaFiles
         newfs /dev/zvol/data/sambaFiles
         mkdir /data/sambaFiles
         touch /data/sambaFiles/FILE_SYSTEM_NOT_MOUNTED
-    - copy /etc/rc.d/dataSambaFiles from another BSD server
+    - cp rc.dataSambaFiles to /etc/rc.d/dataSambaFiles
+        modify any internal constants as appropriate
     - edit /etc/fstab, append
         /dev/zvol/data/sambaFiles  /data/sambaFiles  ufs  noauto,rw,noatime,acls  0  1
     - mount the volume
         mount /data/sambaFiles
 
+
 sambaFiles
     - run ldapMakeWorkspaces
-    - run ldapMakeWorkspaces
+    - run ldapMakeHomes
+
 
 install /usr/ports/net/samba36
     - options: ldap, acl_support, popt, ipv6
