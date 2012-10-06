@@ -35,9 +35,10 @@ parser.add_option("-v", "--verbose", action="store_true", dest="verbose", defaul
 (options, args) = parser.parse_args()
 
 
-if not options.dfws:
+if len(args) != 1:
     print >> sys.stderr, usage
-    exit
+    sys.exit(1)
+targetWS = args[0]
 
 
 ###################################################################################
@@ -71,7 +72,7 @@ con.unbind_s()
 ###################################################################################
 for ws in workspaces:
     wsDn, wsAttrs = ws
-    gtwsName = usAttrs['gtwsName'][0]
+    gtwsName = wsAttrs['gtwsName'][0]
 
     # is the workspace located on this server
     wsServer, wsPath = gtwsName2path[getQualGtwsName(ws)]
@@ -79,7 +80,7 @@ for ws in workspaces:
         continue  #foreign ws
 
     # is this the workspace named on the command line
-    if gtwsName != options.dfws:
+    if gtwsName != targetWS:
         continue
 
     # check that the workspace directory exists
@@ -87,8 +88,17 @@ for ws in workspaces:
     if options.verbose: 
         print '    ensuring workspace directory exists:  ' + wsDir
     if not os.path.exists(wsDir):
-        print >> sys.stderr, '  *** Error workspace directory "' + wsDir + '" does not exist."
+        print >> sys.stderr, '  *** Error workspace directory "' + wsDir + '" does not exist.'
         sys.exit(1)
+
+    # assemble the acls in a tempFile
+    fd, fname = tempfile.mkstemp(prefix='aclFile_', suffix='.tmp')
+    if options.verbose: 
+        print '    writing acls to a temp file ' 
+    with open(fname, 'w') as f:
+        f.write(ACL_POSIX_WORKSPACE_FILEDROP.format(tag='group', qualifier=MEMBERFULL_GID) + '\n' )
+        f.write(ACL_POSIX_WORKSPACE_TRAILER + '\n' )
+    os.close(fd)
 
     for u in users:
         uDn, uAttrs = u
@@ -115,28 +125,18 @@ for ws in workspaces:
         if p.returncode:
             print >> sys.stderr, '  *** Error (re)creating directory: ' + userDir
 
-        # assemble the acls in a tempFile
-        fd, fname = tempfile.mkstemp(prefix='aclFile_', suffix='.tmp')
-        setOwnerGroupPerms(dname, uid, MEMBERLESS_GID, 02700)
-        if options.verbose: 
-            print '    writing acls to a temp file ' 
-        with open(fname, 'w') as f:
-            f.write(ACL_POSIX_WORKSPACE_FILEDROP.format(tag=group, qualifier=MEMBERFULL_GID) + '\n' )
-            f.write(ACL_POSIX_WORKSPACE_TRAILER + '\n' )
-        os.close(fd)
-
         # construct the command to apply the acls
-        cmd = [ os.path.join( os.path.split(sys.argv[0])[0], "setfacl_recursively2.sh" ), 
+        cmd = [ os.path.join( os.path.split(sys.argv[0])[0], "setfacl_recursively.sh" ), 
                 '-u', uid,
                 '-g', MEMBERLESS_GID,
-                '-p', 02700, 
+                '-p', '02770', 
                 fname, userDir ]
         if options.force:
             cmd.insert(1, '-f')
 
         # apply them
         if options.verbose:
-            print '    applying ACLs to user file drop dir   ' + userDir
+            print '    applying ACLs to user file drop dir:            ' + userDir
             p = subprocess.Popen(cmd); p.wait()
         else:
             with open('/dev/null', 'w') as f:
@@ -145,6 +145,7 @@ for ws in workspaces:
         if p.returncode:
             print >> sys.stderr, '  *** Error applying ACLs: ' + userDir + " (" + str(p.returncode) + ")"
 
-        # cleanup temp file
-        os.unlink(fname)
+   # cleanup temp file
+    print fname
+    os.unlink(fname)
 

@@ -58,10 +58,10 @@ OPENLDAP_DIR = '/usr/local/etc/openldap'
 ###################################################################################
 # acl templates
 ###################################################################################
-ACL_POSIX_WORKSPACE_VIEW =     '{tag}:{qualifier}:r-X \n default:{tag}:{qualifier}:r-X'
-ACL_POSIX_WORKSPACE_WORK =     '{tag}:{qualifier}:rwX \n default:{tag}:{qualifier}:rwX'
-ACL_POSIX_WORKSPACE_TRAVERSE = '{tag}:{qualifier}:--X \n default:{tag}:{qualifier}:--X'
-ACL_POSIX_WORKSPACE_FILEDROP = '{tag}:{qualifier}:-wX \n default:{tag}:{qualifier}:-wX'
+ACL_POSIX_WORKSPACE_VIEW =     '{tag}:{qualifier}:r-X \n default:{tag}:{qualifier}:r-X'.replace(" ", "")
+ACL_POSIX_WORKSPACE_WORK =     '{tag}:{qualifier}:rwX \n default:{tag}:{qualifier}:rwX'.replace(" ", "")
+ACL_POSIX_WORKSPACE_TRAVERSE = '{tag}:{qualifier}:--X \n default:{tag}:{qualifier}:--X'.replace(" ", "")
+ACL_POSIX_WORKSPACE_FILEDROP = '{tag}:{qualifier}:-wX \n default:{tag}:{qualifier}:-wX'.replace(" ", "")
 ACL_POSIX_WORKSPACE_TRAILER = '''
         user::rwX
         group::---
@@ -69,12 +69,12 @@ ACL_POSIX_WORKSPACE_TRAILER = '''
         default:user::rwX
         default:group::---
         default:other::---
-    '''
+    '''.replace(" ", "")
 if LOCAL_OS.lower() == 'bsd':
     ACL_POSIX_WORKSPACE_TRAILER += ''' 
         mask::rwx
         default:mask::rwx
-    '''
+    '''.replace(" ", "")
 
 
 ACL_NFSV4_WORKSPACE_VIEW =     '{tag}:{qualifier}:r-x---a-R-----:fd----:allow'

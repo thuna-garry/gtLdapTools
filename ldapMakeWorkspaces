@@ -168,7 +168,7 @@ for ws in workspaces:
                 f.write(ACL_POSIX_WORKSPACE_TRAVERSE.format(tag='group', qualifier=MEMBERFULL_GID) + '\n' )
             f.write(ACL_POSIX_WORKSPACE_TRAILER + '\n' )
 
-        elif: LOCAL_ACL == 'NFSv4':
+        elif LOCAL_ACL == 'NFSv4':
             for acl in attrs['gtwsACL']:
                 aclTag, aclTarget, aclAccess = acl.split(':')
                 if aclTag == "group" and aclTarget == MEMBERFULL_GID:
@@ -185,7 +185,7 @@ for ws in workspaces:
     # for the wsDir: apply the acls
     if LOCAL_OS == 'linux':
         cmd = [ "setfacl", "-R", "--set-file", fname, wsDir ]
-    elif: LOCAL_OS == 'bsd':
+    elif LOCAL_OS == 'bsd':
         exe = os.path.join( os.path.split(sys.argv[0])[0], "setfacl_recursively.sh" )
         cmd = [ exe, fname, wsDir ]
         
