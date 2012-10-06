@@ -82,8 +82,7 @@ edit ~/.cshrc
 	# A righteous umask
 	umask 22
 
-	set path = (/sbin /bin /usr/sbin /usr/bin /usr/local/sbin /usr/local/bin $HOME/
-	bin)
+	set path = (/sbin /bin /usr/sbin /usr/bin /usr/local/sbin /usr/local/bin $HOME/bin)
 
 	setenv  EDITOR  vi
 	setenv  PAGER   more
@@ -97,6 +96,9 @@ install /usr/ports/editors/vim
 vim
     - mv /usr/bin/vi /usr/bin/vi.orig
     - ln /usr/local/bin/vim /usr/bin/vi
+    - add an alias to /etc/csh.cshrc
+        alias vi vim
+    - touch /root/.vimrc
 
 install vmware tools
     - install /usr/ports/misc/compat6x
@@ -136,14 +138,15 @@ PATCH - clock stops with ESX5 and FreeBsd 9.0
     /etc/sysctl.conf kern.timecounter.hardware=ACPI-fast
 	
 
-install /usr/ports/net/rsync
+install /usr/ports/net/rsync  (add the TimeLimit patch)
 install /usr/ports/misc/mc
 install /usr/ports/shells/bash
 install /usr/ports/sysutils/tmux
 install /usr/ports/sysutils/screen
 install /usr/ports/devel/git
-install /usr/ports/net/nss-ldap
-install /usr/ports/net/openldap-server
+install /usr/ports/net/nss_ldap
+install /usr/ports/net/openldap24-server
+    include all overlays
 install /usr/ports/net/py-ldap2
 
 install /usr/ports/sysutils/smartmontools

@@ -1,0 +1,39 @@
+#!/bin/sh
+
+##############################################################################
+# FreeBSD startup script to mount a zfs backed UFS volume for use as sambaFiles
+#    change path, scriptname, and rc variable name  as requred
+##############################################################################
+
+# PROVIDE: dataSambaFiles
+# REQUIRE: zfs
+
+. /etc/rc.subr
+
+name="dataSambaFiles"
+rcvar=`set_rcvar`
+start_cmd="dataSambaFiles_start"
+stop_cmd="dataSambaFiles_stop"
+
+load_rc_config $name
+
+dataSambaFiles_start() {
+    if checkyesno ${rcvar}; then
+        mount /dev/zvol/data/sambaFiles
+    fi
+}
+
+dataSambaFiles_stop() {
+    if checkyesno ${rcvar}; then
+        umount /dev/zvol/data/sambaFiles
+    fi
+}
+
+run_rc_command "$1"
+
+
+#=====================
+# use:
+#     rcorder /etc/rc.d/*
+# to check the execution order of scripts
+

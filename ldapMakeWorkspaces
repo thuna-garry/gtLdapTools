@@ -75,12 +75,23 @@ for ws in workspaces:
             shareComment = attrs.get('description', ['no description supplied'])[0],
             sharePath    = wsDir
         )
+    if 'gtwsHasRecycleBin' in attrs:
+        if attrs['gtwsHasRecycleBin'][0].lower() in ('yes', 'true'):
+            smbConf = smbConf + SAMBA_RECYCLE_TEMPLATE
 
     # sanity check that the workspace owner is valid
     if attrs['gtwsOwnerUid'][0] not in uid2user:
         print >> sys.stderr, '  *** Error: workspace "' + gtwsName \
                              + '" has gtwsOwnerUid "' \
                              + aclTarget + '" which is not a valid userId'
+
+    # sanity check that the workspace administrators are valid
+    if 'administratorUid' in attrs:
+        for administratorUid in attrs['gtwsAdministratorUid']:
+            if administratorUid not in uid2user:
+                print >> sys.stderr, '  *** Error: workspace "' + gtwsName \
+                                     + '" has gtwsAdministratorUid "' \
+                                     + aclTarget + '" which is not a valid userId'
 
     # determine the access lists for the workspace
     readList = []
@@ -157,7 +168,7 @@ for ws in workspaces:
                 f.write(ACL_POSIX_WORKSPACE_TRAVERSE.format(tag='group', qualifier=MEMBERFULL_GID) + '\n' )
             f.write(ACL_POSIX_WORKSPACE_TRAILER + '\n' )
 
-        else: #LOCAL_ACL == 'NFSv4':
+        elif: LOCAL_ACL == 'NFSv4':
             for acl in attrs['gtwsACL']:
                 aclTag, aclTarget, aclAccess = acl.split(':')
                 if aclTag == "group" and aclTarget == MEMBERFULL_GID:
@@ -174,7 +185,7 @@ for ws in workspaces:
     # for the wsDir: apply the acls
     if LOCAL_OS == 'linux':
         cmd = [ "setfacl", "-R", "--set-file", fname, wsDir ]
-    else: #LOCAL_OS == 'bsd':
+    elif: LOCAL_OS == 'bsd':
         exe = os.path.join( os.path.split(sys.argv[0])[0], "setfacl_recursively.sh" )
         cmd = [ exe, fname, wsDir ]
         

@@ -126,7 +126,9 @@ def queryUserGroup(con):
 def queryWorkspace(con):
     baseDN = BASE_DN
     filter = '(&(objectClass=gtWorkspace)(gtwsName=*))'
-    attrs  = [ 'gtwsName', 'gtwsRelativePath', 'gtwsACL', 'gtwsLinkFile', 'gtwsOwnerUid', 'description' ]
+    attrs  = [ 'gtwsName', 'gtwsRelativePath', 'gtwsACL', 'gtwsLinkFile'
+             , 'gtwsOwnerUid', 'gtwsAdministratorUid', 'gtwsHasRecycleBin'
+             , 'description' ]
     qr = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
     return qr
 

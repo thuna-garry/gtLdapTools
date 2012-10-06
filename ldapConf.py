@@ -61,6 +61,7 @@ OPENLDAP_DIR = '/usr/local/etc/openldap'
 ACL_POSIX_WORKSPACE_VIEW =     '{tag}:{qualifier}:r-X \n default:{tag}:{qualifier}:r-X'
 ACL_POSIX_WORKSPACE_WORK =     '{tag}:{qualifier}:rwX \n default:{tag}:{qualifier}:rwX'
 ACL_POSIX_WORKSPACE_TRAVERSE = '{tag}:{qualifier}:--X \n default:{tag}:{qualifier}:--X'
+ACL_POSIX_WORKSPACE_FILEDROP = '{tag}:{qualifier}:-wX \n default:{tag}:{qualifier}:-wX'
 ACL_POSIX_WORKSPACE_TRAILER = '''
         user::rwX
         group::---
@@ -79,6 +80,7 @@ if LOCAL_OS.lower() == 'bsd':
 ACL_NFSV4_WORKSPACE_VIEW =     '{tag}:{qualifier}:r-x---a-R-----:fd----:allow'
 ACL_NFSV4_WORKSPACE_WORK =     '{tag}:{qualifier}:rwxpD-a-R-----:fd----:allow'
 ACL_NFSV4_WORKSPACE_TRAVERSE = '{tag}:{qualifier}:--x-----------:-d----:allow'
+ACL_NFSV4_WORKSPACE_FILEDROP = '{tag}:{qualifier}:-wxp----------:-d----:allow'
 ACL_NFSV4_WORKSPACE_TRAILER = '''
         everyone@:full_set:fd----:deny
            owner@:--------------:fd----:allow
@@ -86,12 +88,14 @@ ACL_NFSV4_WORKSPACE_TRAILER = '''
         everyone@:--------------:fd----:allow
    '''
 
+
 ACL_NFSV4_USERDIR = '''
            owner@:{qualifier}:r-x---a-R-----:fd----:allow
         everyone@:full_set:fd----:deny
            group@:--------------:fd----:allow
         everyone@:--------------:fd----:allow
    '''
+
 
 ACL_NFSV4_HOMEDIR = '''
            owner@:{qualifier}:rwxpDda-R-c---:fd----:allow
@@ -138,18 +142,7 @@ SAMBA_HOME_TEMPLATE = '''
         ;oplocks = False
         ;level2 oplocks = False
 
-        vfs object = recycle, zfsacl
-
-        recycle:repository = ''' + SAMBA_USER_HOME + '''/_recycleBin
-        recycle:keeptree = yes
-        recycle:versions = yes
-        ;name = _recycleBin
-        ;mode = KEEP_DIRECTORIES|VERSIONS|TOUCH
-        ;maxsize = 0
-        ;exclude = *.tmp|*.temp|*.o|*.obj|~$*|*.~??|*.log|*.trace
-        ;excludedir = /tmp|/temp|/cache
-        ;noversions = *.doc|*.ppt|*.dat|*.ini
-
+        vfs objects = zfsacl
         acl check permissions = False
         nfs4: mode = special
         nfs4: chown = true
@@ -181,7 +174,17 @@ SAMBA_WORKSPACE_TEMPLATE = '''
         ;oplocks = False
         ;level2 oplocks = False
 
-        vfs object = recycle, zfsacl
+        vfs objects = zfsacl
+        acl check permissions = False
+        nfs4: mode = special
+        nfs4: chown = true
+        nfs4: acedup = merge
+
+'''
+
+
+SAMBA_RECYCLE_TEMPLATE = '''
+        vfs objects = recycle
 
         recycle:repository = _recycleBin
         recycle:keeptree = yes
@@ -192,11 +195,6 @@ SAMBA_WORKSPACE_TEMPLATE = '''
         ;exclude = *.tmp|*.temp|*.o|*.obj|~$*|*.~??|*.log|*.trace
         ;excludedir = /tmp|/temp|/cache
         ;noversions = *.doc|*.ppt|*.dat|*.ini
-
-        acl check permissions = False
-        nfs4: mode = special
-        nfs4: chown = true
-        nfs4: acedup = merge
 
 '''
 
