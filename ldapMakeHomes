@@ -21,10 +21,10 @@ modifiedBy="Garry Thuna"
 # parse command line options
 ##################################################################################
 usage = "usage: %prog [options] [uid1 [[uid2] [[...]]]" 
-description = "Ensures that the user's home directory exists, "  +\
-              "that it has correct user, group and acl, and "  +\
+description = "Ensures that the user's home directory exists; "  +\
+              "that it has correct user, group and permissions; "  +\
               "and sets up a subdirectory of links for any workspace "  +\
-              "that the user has access to"
+              "to which the user has access."
 parser = OptionParser(usage=usage, version=version, description=description)
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
                         help="show changes made to file system [default: %default]")
@@ -79,6 +79,7 @@ for u in users:
             shareComment = 'home directory of ' + attrs['cn'][0],
             sharePath    = userDir
         )
+    smbConf = smbConf + SAMBA_RECYCLE_TEMPLATE  #all users get recycle bins
 
     # were specific users specified on the command line
     if len(args) > 0 and uid.lower() not in [a.lower() for a in args]:
@@ -92,30 +93,25 @@ for u in users:
 
     # create user's directory
     userDir = os.path.join(SAMBA_HOME, uid)
+    homeDir = os.path.join(SAMBA_HOME, uid, SAMBA_USER_HOME)
     if options.verbose: 
-        print '    ensuring user directory exists:       ' + userDir
-    p = subprocess.Popen([ "mkdir", "-p", userDir ]); p.wait()
-    if p.returncode:
-        print >> sys.stderr, '  *** Error (re)creating directory: ' + userDir
-
-    # correct permissions
-    if options.verbose: 
-        print '    setting ownership and permissions on: ' + userDir
-    setOwnerGroupPerms(SAMBA_HOME, ROOT_UID, MEMBERFULL_GID, 00510)
-    setOwnerGroupPerms(userDir,    uid,      MEMBERLESS_GID, 02500)
-
-    # create user's home/personal directory
-    homeDir = os.path.join(userDir, SAMBA_USER_HOME)
-    if options.verbose: 
-        print '    ensuring user home directory exists:       ' + homeDir
+        print '    ensuring user directory exists:       ' + homeDir
     p = subprocess.Popen([ "mkdir", "-p", homeDir ]); p.wait()
     if p.returncode:
         print >> sys.stderr, '  *** Error (re)creating directory: ' + homeDir
 
     # correct permissions
     if options.verbose: 
+        print '    setting ownership and permissions on: ' + SAMBA_HOME
+    setOwnerGroupPerms(SAMBA_HOME, ROOT_UID, MEMBERFULL_GID, 00510)
+
+    if options.verbose:
+        print '    setting ownership and permissions on: ' + userDir
+    setOwnerGroupPerms(userDir,    uid,      MEMBERLESS_GID, 02550)
+
+    if options.verbose:
         print '    setting ownership and permissions on: ' + homeDir
-    setOwnerGroupPerms(homeDir, uid, MEMBERLESS_GID, 02700)
+    setOwnerGroupPerms(homeDir,    uid,      MEMBERLESS_GID, 02770)
 
     # determine the unique set of workspaces that the user can access
     accessibleWsNames= list()

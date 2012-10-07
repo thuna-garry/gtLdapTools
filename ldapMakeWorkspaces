@@ -24,6 +24,9 @@ usage = "usage: %prog [options] [aws1 [[aws2] [[...]]]"
 description = "Ensures that the workspace directory exists, "  +\
               "that it has correct user, group and acl"
 parser = OptionParser(usage=usage, version=version, description=description)
+parser.add_option("-f", "--force-acls", action="store_true", dest="force", default=False,
+                        help="force the recursive application of ACLs even if " +\
+                             "the parent dir seems to already be set correctly")
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
                         help="show changes made to file system [default: %default]")
 (options, args) = parser.parse_args()
@@ -142,14 +145,15 @@ for ws in workspaces:
         print >> sys.stderr, '  *** Error (re)creating directory: ' + wsDir
 
     # correct permissions
+    wsDir = os.path.join(SAMBA_WORKSPACE)
     if options.verbose:
         print '    setting ownership and permissions on: ' + wsDir
-    wsDir = os.path.join(SAMBA_WORKSPACE)
     setOwnerGroupPerms(wsDir, ROOT_UID, MEMBERFULL_GID, 00510)
+
     wsDir = os.path.join(SAMBA_WORKSPACE, server)
+    if options.verbose:
+        print '    setting ownership and permissions on: ' + wsDir
     setOwnerGroupPerms(wsDir, ROOT_UID, MEMBERFULL_GID, 00510)
-    wsDir = os.path.join(SAMBA_WORKSPACE, server, path)
-    setOwnerGroupPerms(wsDir, attrs['gtwsOwnerUid'][0], MEMBERLESS_GID, 02700)
 
     # for the wsDir: assemble the acls in a temp file
     fd, fname = tempfile.mkstemp()
@@ -182,13 +186,17 @@ for ws in workspaces:
             f.write(ACL_NFSV4_WORKSPACE_TRAILER + '\n' )
     os.close(fd)
 
-    # for the wsDir: apply the acls
-    if LOCAL_OS == 'linux':
-        cmd = [ "setfacl", "-R", "--set-file", fname, wsDir ]
-    elif LOCAL_OS == 'bsd':
-        exe = os.path.join( os.path.split(sys.argv[0])[0], "setfacl_recursively.sh" )
-        cmd = [ exe, fname, wsDir ]
-        
+    # construct the command to apply the acls
+    wsDir = os.path.join(SAMBA_WORKSPACE, server, path)
+    cmd = [ os.path.join( os.path.split(sys.argv[0])[0], "setfacl_recursively.sh" ),
+            '-u', attrs['gtwsOwnerUid'][0],
+            '-g', MEMBERLESS_GID,
+            '-p', '02770',
+            fname, wsDir ]
+    if options.force:
+        cmd.insert(1, '-f')
+
+    # apply them
     if options.verbose: 
         print '    applying ACLs to workspace:           ' + wsDir
         p = subprocess.Popen(cmd); p.wait()

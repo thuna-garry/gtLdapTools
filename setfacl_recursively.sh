@@ -11,8 +11,8 @@
 gtToolDir=${0%/*}
 
 eval "`$gtToolDir/ldapConf.py \
+        LOCAL_OS    \
         LOCAL_ACL   \
-        TMP_DIR     \
      `"
 
 ###############################################################################
@@ -105,14 +105,14 @@ mkdir $testDir
 
 # check rootDir permissions
 if [ "$uid" ]; then
-    u=`ls -ld $rootDir | awk '{print $3}'`
+    u=`ls -ld "$rootDir" | awk '{print $3}'`
     if [ "$u" != "$uid" ]; then
         diffFound=1
         [ "$VERBOSE" ] && echo "        uid difference (shouldBe=$uid is=$u)     $rootDir"
     fi
 fi
 if [ "$gid" ]; then
-    g=`ls -ld $rootDir | awk '{print $4}'`
+    g=`ls -ld "$rootDir" | awk '{print $4}'`
     if [ "$g" != "$gid" ]; then
         diffFound=1
         [ "$VERBOSE" ] && echo "        gid difference (shouldBe=$gid is=$g)     $rootDir"
@@ -120,17 +120,16 @@ if [ "$gid" ]; then
 fi
 if [ "$diffFound" -o "$force" ]; then
     [ "$VERBOSE" ] && echo "        applying ownership change (${uid}:${gid})     $rootDir"
-    if   [ "$uid" -a "gid" ]; then  chown -R "${uid}:${gid}" $rootDir
-    elif [ "$uid"          ]; then  chown -R "${uid}"        $rootDir
-    elif [ "$gid"          ]; then  chgrp -R "${gid}"        $rootDir
+    if   [ "$uid" -a "gid" ]; then  chown -R "${uid}:${gid}" "$rootDir"
+    elif [ "$uid"          ]; then  chown -R "${uid}"        "$rootDir"
+    elif [ "$gid"          ]; then  chgrp -R "${gid}"        "$rootDir"
     fi
 fi
 
 # check rootDir ownership and permissions
 if [ "$perms" ]; then
-    p1=`ls -ld $rootDir | awk '{print $1}' | sed 's/\+$//'`
-    p2=`ls -ld $testDir | awk '{print $1}' | sed 's/\+$//'`
-                       [ "$VERBOSE" ] && echo "        applying ownership change (${uid}:${gid})     $rootDir"
+    p1=`ls -ld "$rootDir" | awk '{print $1}' | sed 's/\+$//'`
+    p2=`ls -ld "$testDir" | awk '{print $1}' | sed 's/\+$//'`
     [ "$VERBOSE"  -a "$p1" != "$p2" ] && echo "        perms (is=$p1 shouldBe=$p2)   $rootDir"
     if [ "$force" -o "$p1" != "$p2" ]; then
         [ "$VERBOSE" ] && echo "        applying permission change ($perms)          $rootDir"
@@ -142,8 +141,8 @@ fi
 if [ "$LOCAL_ACL" = "posix" ]; then
     # create separate templates for directories and files
     cat $aclFile      | sed 's/^[ 	]*//; s/ *$//; /^$/d' > ${aclFile}.tidy
-    cat $aclFile.tidy | grep -v '^default' | sed 's/X$/x/' > ${aclFile}.dir
-    cat $aclFile.tidy | grep -v '^default' | sed 's/X$/-/' > ${aclFile}.file
+    cat $aclFile.tidy | grep -v '^default' | sed 's/X$/x/'    > ${aclFile}.dir
+    cat $aclFile.tidy | grep -v '^default' | sed 's/X$/-/'    > ${aclFile}.file
     cat $aclFile.tidy | grep    '^default' | sed -e 's/^default://' -e 's/X$/x/' > ${aclFile}.def
 
     # set the ACL on the testDir so we can comparte to the rootDir
@@ -163,16 +162,20 @@ if [ "$LOCAL_ACL" = "posix" ]; then
     
     # apply changes if necessary
     if [ "$diffFound" -o "$force" ]; then
-        find "$rootDir" | while read f; do
-            if [ -d "$f" ]; then
-                [ "$VERBOSE" ] && echo "        setting acls for directory:                 $f/"
-                setfacl -bM  ${aclFile}.dir "$f"
-                setfacl -dM  ${aclFile}.def "$f"  #prevent core dump with -b on dir that has never had default acl set
-                setfacl -bdM ${aclFile}.def "$f"
-            elif [ -f "$f" ]; then
-                setfacl -bM ${aclFile}.file "$f"
-            fi
-        done
+        if [ "$LOCAL_OS" = 'linux' ]; then
+            setfacl -R --set-file ${aclFile}.tidy $rootDir
+        elif [ "$LOCAL_OS" = 'bsd' ]; then
+            find "$rootDir" | while read f; do
+                if [ -d "$f" ]; then
+                    [ "$VERBOSE" ] && echo "        setting acls for directory:                 $f/"
+                    setfacl -bM  ${aclFile}.dir "$f"
+                    setfacl -dM  ${aclFile}.def "$f"  #prevent core dump with -b on dir that has never had default acl set
+                    setfacl -bdM ${aclFile}.def "$f"
+                elif [ -f "$f" ]; then
+                    setfacl -bM ${aclFile}.file "$f"
+                fi
+            done
+        fi
     fi
 
 elif [ "$LOCAL_ACL" = "NFSv4" ]; then
@@ -207,7 +210,8 @@ elif [ "$LOCAL_ACL" = "NFSv4" ]; then
     fi
 fi
 
-[ "$DEBUG" ] || rm -f  ${aclFile}.{tidy,dir,file,def}
+[ "$DEBUG" ] || rm -f  ${aclFile}.*
 [ "$DEBUG" ] || rm -rf ${testDir}
 [ "$DEBUG" ] && echo "        -------------- out $0 ----------------"
 [ "$DEBUG" ] && echo
+exit 0
