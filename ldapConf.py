@@ -113,6 +113,7 @@ ACL_NFSV4_HOMEDIR = '''
 
 SAMBA_SID_PREFIX = 'S-1-5-21-12345-1'
 
+# Ensure that all parent directories of SAMBA_ROOT are traversable by MEMBERFULL_GID
 SAMBA_ROOT      = '/data/sambaFiles'
 SAMBA_HOME      = SAMBA_ROOT + '/home'
 SAMBA_WORKSPACE = SAMBA_ROOT + '/workspace'

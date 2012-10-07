@@ -1,11 +1,24 @@
 #! /bin/sh
 
-# assumes that the original ldif ends in '.orig'
-inFile=$1
-outFile=${1%.orig}.gt
-tmpFile=/tmp/script.$$
+###############################################################################
+# convert an ldif file for use with gtLdapTools
+#
+# $1 = ldif file to be converted
+# output will be to $1.gt
+###############################################################################
 
-cat $inFile | ./ldifJoin > $tmpFile
+
+###############################################################################
+# globals
+###############################################################################
+gtToolDir=${0%/*}
+
+# set up the file names 
+inFile=$1
+outFile=$1.gt
+tmpFile=/tmp/${0##*/}.$$
+
+cat $inFile | ${gtToolDir}/ldifJoin > $tmpFile
 
 ##########################################################
 # avmaxServer -> gtServer
@@ -52,6 +65,7 @@ sed -i -e 's/^gtwsACL\(.*\):r-x$/gtwsACL\1:view/'      $tmpFile
 ##########################################################
 # finish up
 ##########################################################
-cat $tmpFile | ./ldifSplit > $outFile
+cat $tmpFile | ${gtToolDir}/ldifSplit > $outFile
 
 rm -f $tmpFile
+
