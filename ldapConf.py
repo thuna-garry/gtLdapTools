@@ -114,10 +114,11 @@ ACL_NFSV4_HOMEDIR = '''
 SAMBA_SID_PREFIX = 'S-1-5-21-12345-1'
 
 # Ensure that all parent directories of SAMBA_ROOT are traversable by MEMBERFULL_GID
-SAMBA_ROOT      = '/data/sambaFiles'
-SAMBA_HOME      = SAMBA_ROOT + '/home'
-SAMBA_WORKSPACE = SAMBA_ROOT + '/workspace'
-SAMBA_USER_HOME = 'personal'
+SAMBA_ROOT        = '/data/sambaFiles'
+SAMBA_HOME        = SAMBA_ROOT + '/home'
+SAMBA_WORKSPACE   = SAMBA_ROOT + '/workspace'
+SAMBA_USER_HOME   = 'personal'
+SAMBA_RECYCLE_DIR = '_recycleBin'
 
 SAMBA_HOME_CONF = 'smb_home.conf'
 SAMBA_HOME_TEMPLATE = '''
@@ -187,7 +188,7 @@ SAMBA_WORKSPACE_TEMPLATE = '''
 SAMBA_RECYCLE_TEMPLATE = '''
         vfs objects = recycle
 
-        recycle:repository = _recycleBin
+        recycle:repository = {recycleDir}
         recycle:keeptree = yes
         recycle:versions = yes
         ;name = _recycleBin
@@ -197,7 +198,7 @@ SAMBA_RECYCLE_TEMPLATE = '''
         ;excludedir = /tmp|/temp|/cache
         ;noversions = *.doc|*.ppt|*.dat|*.ini
 
-'''
+'''.format(recycleDir=SAMBA_RECYCLE_DIR)
 
 
 

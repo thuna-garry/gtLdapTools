@@ -1,0 +1,92 @@
+#! /usr/local/bin/python
+
+import os
+import ldap
+import subprocess
+from optparse import OptionParser
+import tempfile
+
+from ldapConf import *
+from ldapUtil import *
+
+
+##################################################################################
+# global constants
+##################################################################################
+version="%prog: 2012-09-26"
+modifiedBy="Garry Thuna"
+
+
+##################################################################################
+# parse command line options
+##################################################################################
+usage = "usage: %prog [options] [uid1 [[uid2] [[...]]]" 
+description = "TODO Ensures that the user's home directory exists; "  +\
+              "that it has correct user, group and permissions; "  +\
+              "and sets up a subdirectory of links for any workspace "  +\
+              "to which the user has access."
+parser = OptionParser(usage=usage, version=version, description=description)
+parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
+                        help="show changes made to file system [default: %default]")
+(options, args) = parser.parse_args()
+
+
+##################################################################################
+# process TODO
+##################################################################################
+# bind to the ldap server 
+con = ldap.initialize(BIND_URI)
+if BIND_TLS:
+    con.start_tls_s()
+con.simple_bind_s(BIND_DN, BIND_PW)
+
+# get all workspaces on this server that have any of the following defined
+#   gtwsRetainHours  gtwsRetensionOptions  gtwsHasRecycleBin
+baseDN = BASE_DN_SERVER
+filter = '(&(objectClass=gtWorkspace)(|(gtwsRetainHours=*)(gtwsRetensionOptions=*)(gtwsHasRecycleBin=*)))'
+attrs  = [ 'gtwsName', 'gtwsRecycleBinDays', 'gtwsRetainHours' ]
+workspaces = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
+
+# for each workspace determine what needs to be cleaned up
+for ws in workspaces:
+    dn, attrs = ws
+    path = getWorkspaceCanonicalPath(con, ws)
+
+    if 'gtwsRetainHours' in attrs:
+        if LOCAL_OS == 'linux':
+            findOpts = [ '-mmin', '+' + str(int(attrs['gtwsRetainHours'][0]) * 60) ]
+        if LOCAL_OS == 'bsd':
+            findOpts = [ '-mtime', '+' + attrs['gtwsRetainHours'][0] + 'h' ]
+
+        # do it
+        cmd = [ "find", path] + findOpts + ['-exec', 'rm', '-rf', '{}', '\;']
+        if options.verbose:
+            print 'scrubbing workspace:       ' + attrs['gtwsName'][0] + '(path=' + path + ')'
+            p = subprocess.Popen(cmd); p.wait()
+        else:
+           with open('/dev/null', 'w') as f:
+               p = subprocess.Popen(cmd, stdout=f); p.wait()
+        if p.returncode:
+            print >> sys.stderr, '  *** Error scrubbing:     ' + path
+
+    if 'gtwsRecycleBinDays' in attrs:
+        path = os.path.join(path, SAMBA_RECYCLE_DIR)
+        if LOCAL_OS == 'linux':
+            findOpts = [ '-mtime', '+' + attrs['gtwsRecycleBinDays'][0] ]
+        if LOCAL_OS == 'bsd':
+            findOpts = [ '-mtime', '+' + attrs['gtwsRecycleBinDays'][0] + 'd' ]
+
+        # do it
+        cmd = [ "find", path] + findOpts + ['-exec', 'rm', '-rf', '{}', '\;']
+        if options.verbose:
+            print 'scrubbing recycleBin:       ' + attrs['gtwsName'][0] + '(path=' + path + ')'
+            p = subprocess.Popen(cmd); p.wait()
+        else:
+           with open('/dev/null', 'w') as f:
+               p = subprocess.Popen(cmd, stdout=f); p.wait()
+        if p.returncode:
+            print >> sys.stderr, '  *** Error scrubbing:     ' + path
+
+
+# close the connection
+con.unbind_s()

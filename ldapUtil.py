@@ -141,6 +141,31 @@ def queryServer(con):
 
 
 ###################################################################################
+# given a workspace record return its canonical server path 
+###################################################################################
+def getWorkspaceCanonicalPath(con, workspace):
+    dn, attrs = workspace
+
+    # split the dn into its pieces and then query for all ancestral 
+    # workspaces (inclusive) 
+    pieces = dn.split(',')   # split the DN into its component pieces
+    filter=""
+    i=0
+    while pieces[i].startswith('gtwsName'):
+        filter = filter + '(' + pieces[i]  + ')'
+    filter="(|" + filter + ")"
+    baseDN = ",".join(pieces[i:])
+    attrs  = [ 'gtwsRelativePath' ]
+    qr = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
+    workspaces = sorted( qr, key=lambda r: ','.join(r[0].split(',')[::-1]).lower() )
+
+    path = SAMBA_WORKSPACE 
+    for ws in workspaces:
+        path = os.path.join( path, ws[1]['gtwsRelativePath'][0] )
+    return path
+
+
+###################################################################################
 # process users and groups
 #    build up a set of cross references to user, group, workspace and server
 ###################################################################################

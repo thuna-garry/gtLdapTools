@@ -78,8 +78,8 @@ for ws in workspaces:
             shareComment = attrs.get('description', ['no description supplied'])[0],
             sharePath    = wsDir
         )
-    if 'gtwsHasRecycleBin' in attrs:
-        if attrs['gtwsHasRecycleBin'][0].lower() in ('yes', 'true'):
+    if 'gtwsRecycleBinDays' in attrs:
+        if attrs['gtwsRecycleBinDays'][0] > 0:
             smbConf = smbConf + SAMBA_RECYCLE_TEMPLATE
 
     # sanity check that the workspace owner is valid
