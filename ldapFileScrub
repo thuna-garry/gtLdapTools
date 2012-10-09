@@ -49,70 +49,44 @@ def getChildrenRelativePaths(con, parentDN):
     return childrenRelativePaths
 
 
-def scrub(path, maxAge, minDepth):
-    if 'gtwsPurgeHours' in attrs:
-        maxAge = int(attrs['gtwsPurgeHours'][0]) * 3600  # max age in seconds
-        nowTime = time.time()                            # time the search starts
+def scrubDir(path, maxAge, minDepth, childrenRelativePaths):
+    nowTime = time.time()                            # time the search starts
+    baseDepth = path.count(os.path.sep)
 
-        # calculate the working depth from the supplied gtwsPurgeMinDepth
-        baseDepth = path.count(os.path.sep)
-        minDepth = 1
-        if 'gtwsPurgeMinDepth' in attrs:
-            minDepth = int(attrs['gtwsPurgeMinDepth'][0])
-
-        # find names of immediate children that are base directories of child workspaces
-        childrenRelativePaths = getChildrenRelativePaths(con, dn)
-
-        for curPath, dirs, files in os.walk(path):
-            curDepth = curPath.count(os.path.sep)
-            if curDepth == baseDepth:                # at base of search
-                for child in childrenRelativePaths:
-                    dirs.remove(child)               # skip child workspaces
-                    print "skipping...", child
-   
-            # honor gtwsPurgeMinDepth (we add one to the curDepth because on each iteration
-            # we are checking the children of curPath and not curPath itself
-            if curDepth + 1 - baseDepth < minDepth: 
-                continue
-
-            if options.verbose:
-                print "checking files in: ", curPath
-            
-            # check the age of the files
-            for f in files:
-                ff = os.path.join(curPath, f)
-                ff_time = os.stat(ff).st_mtime
-                age = (nowTime - ff_time)
-                if age > maxAge:
-                    if options.verbose:
-                        print "    deleting file: ", ff
-                    os.unlink(ff)
-                    files.remove(f)
-
-            # see if the directory is empty (this is a lazy directory cleanup as 
-            # empty ancestors don't get deleted until the next rerun of this script)
-            if (len(dirs) + len(files) == 0) and (curDepth - baseDepth >= minDepth):
+    for curPath, dirs, files in os.walk(path):
+        if options.verbose:
+            print "scrubbing:  ", curPath
+        curDepth = curPath.count(os.path.sep)
+        if curDepth == baseDepth:                # at base of search
+            for child in childrenRelativePaths:
                 if options.verbose:
-                    print "    directory is now empty... deleting "
-                os.rmdir(curPath)
+                    print "    skipping subworkspac:  ", child
+                dirs.remove(child)               # skip child workspaces
+
+        # honor gtwsPurgeMinDepth (we add one to the curDepth because on each
+        # iteration we are checking the children of curPath and not curPath itself
+        if curDepth + 1 - baseDepth < minDepth: 
+            continue
+
+        # check the age of the files
+        for f in files:
+            ff = os.path.join(curPath, f)
+            ff_time = os.stat(ff).st_mtime
+            age = (nowTime - ff_time)
+            if age > maxAge:
+                if options.verbose:
+                    print "    deleting file: ", ff
+                os.unlink(ff)
+                files.remove(f)
+
+        # see if the directory is empty (this is a lazy directory cleanup as 
+        # empty ancestors don't get deleted until the next rerun of this script)
+        if (len(dirs) + len(files) == 0) and (curDepth - baseDepth >= minDepth):
+            if options.verbose:
+                print "    directory is now empty... deleting "
+            os.rmdir(curPath)
+
              
-def removeEmptyDirectories(parentPath, minDepth, excludeDirs):
-    findOpts =[ parentPath ]
-    for dir in excludeDirs:
-        findOpts.extend([ '!', '(', '-path', os.path.join('.', dir), '-prune', ')' ])
-    findOpts.extend([ '-type', 'd' ])
-    findOpts.extend([ '-mindepth', str(minDepth) ])
-    cmd = ['find'] + findOpts + ['-exec', 'rm', '-rf', '{}', '+']
-    if options.verbose:
-        print '    removing empty dirs    ' + attrs['gtwsName'][0] + ' (path=' + path + ')'
-        p = subprocess.Popen(cmd); p.wait()
-    else:
-       with open('/dev/null', 'w') as f:
-           p = subprocess.Popen(cmd, stdout=f); p.wait()
-    if p.returncode:
-        print >> sys.stderr, '  *** Error scrubbing:     ' + path
-
-
 ##################################################################################
 # main
 ##################################################################################
@@ -125,7 +99,7 @@ con.simple_bind_s(BIND_DN, BIND_PW)
 # get all workspaces on this server that have any of the following defined
 #   gtwsPurgeHours  gtwsRecycleBinDays
 baseDN = BASE_DN_SERVER
-filter = '(&(objectClass=gtWorkspace)(|(gtwsPurgeHours=*)(gtwsHasRecycleBin=*)))'
+filter = '(&(objectClass=gtWorkspace)(|(gtwsPurgeHours=*)(gtwsRecycleBinDays=*)))'
 attrs  = [ 'gtwsName', 'gtwsRecycleBinDays', 'gtwsPurgeHours', 'gtwsPurgeMinDepth' ]
 workspaces = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
 
@@ -134,59 +108,24 @@ for ws in workspaces:
     dn, attrs = ws
     path = os.path.join(SAMBA_WORKSPACE, SERVER_SHORT_NAME, getWorkspaceRelativePath(con, ws))
 
+    if 'gtwsPurgeHours' in attrs:
+        maxAge = int(attrs['gtwsPurgeHours'][0]) * 3600  # max age in seconds
 
-#        # exclude directories of child workspaces
-#        childrenRelativePaths = getChildrenRelativePaths(con, dn)
-#        for dir in childrenRelativePaths:
-#            findOpts.extend([ '!', '(', '-path', os.path.join('.', dir), '-prune', ')' ])
-#
-#        # set the aging 
-#        if LOCAL_OS == 'linux':
-#            findOpts.extend([ '-mmin', '+' + str(int(attrs['gtwsPurgeHours'][0]) * 60) ])
-#        if LOCAL_OS == 'bsd':
-#            findOpts.extend([ '-mtime', '+' + attrs['gtwsPurgeHours'][0] + 'h' ])
-#
-#        # apply any minDepth options
-#        minDepth = 1
-#        if 'gtwsPurgeMinDepth' in attrs:
-#            minDepth = attrs['gtwsPurgeMinDepth'][0]
-#        findOpts.extend([ '-mindepth', str(minDepth) ])
-#
-#        # do it
-#        cmd = ['find'] + findOpts + ['-exec', 'rm', '-rf', '{}', '+']
-#        print " ".join(cmd)
-#        if options.verbose:
-#            print 'scrubbing workspace:       ' + attrs['gtwsName'][0] + ' (path=' + path + ')'
-#            p = subprocess.Popen(cmd); p.wait()
-#        else:
-#           with open('/dev/null', 'w') as f:
-#               p = subprocess.Popen(cmd, stdout=f); p.wait()
-#        if p.returncode:
-#            print >> sys.stderr, '  *** Error scrubbing:     ' + path
-#
-#        removeEmptyDirectories(path, minDepth, childrenRelativePaths)
+        # calculate the working depth from the supplied gtwsPurgeMinDepth
+        minDepth = 1
+        if 'gtwsPurgeMinDepth' in attrs:
+            minDepth = int(attrs['gtwsPurgeMinDepth'][0])
+
+        # exclude directories of child workspaces
+        childrenRelativePaths = getChildrenRelativePaths(con, dn)
+
+        # do it
+        scrubDir(path, maxAge, minDepth, childrenRelativePaths)
 
     if 'gtwsRecycleBinDays' in attrs:
         path = os.path.join(path, SAMBA_RECYCLE_DIR)
-        findOpts = [ path ]
-
-        if LOCAL_OS == 'linux':
-            findOpts.extend([ '-mtime', '+' + attrs['gtwsRecycleBinDays'][0] ])
-        if LOCAL_OS == 'bsd':
-            findOpts.extend([ '-mtime', '+' + attrs['gtwsRecycleBinDays'][0] + 'd' ])
-
-        # do it
-        cmd = ['find'] + findOpts + ['-exec', 'rm', '-rf', '{}', '+']
-        if options.verbose:
-            print 'scrubbing recycleBin:       ' + attrs['gtwsName'][0] + ' (path=' + path + ')'
-            p = subprocess.Popen(cmd); p.wait()
-        else:
-           with open('/dev/null', 'w') as f:
-               p = subprocess.Popen(cmd, stdout=f); p.wait()
-        if p.returncode:
-            print >> sys.stderr, '  *** Error scrubbing:     ' + path
-
-        removeEmptyDirectories(path, 0, [])
+        maxAge = int(attrs['gtwsRecycleBinDays'][0]) * 24 * 3600   # max age in seconds
+        scrubDir(path, maxAge, 0, [])
 
 # close the connection
 con.unbind_s()
