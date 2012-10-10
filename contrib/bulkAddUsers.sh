@@ -9,7 +9,7 @@ export PATH
 ##################################################################
 gtToolDir=${0%/*}/..
 
-cmd="$gtToolDir/ldapAddUser --URI -d uid=gthuna,ou=admins,cn=directoryManagement -w password -S -U"
+cmd="$gtToolDir/bin/ldapAddUser --URI -d uid=gthuna,ou=admins,cn=directoryManagement -w password -S -U"
 
 $cmd -n "foo, man"
 $cmd -n "Banks, Greg"

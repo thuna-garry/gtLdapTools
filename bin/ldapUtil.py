@@ -1,11 +1,14 @@
 #! /usr/local/bin/python
 
-import os
 import sys
+import os
+import os.path
 import ldap
 import subprocess
 import tempfile
 from optparse import OptionParser
+
+sys.path.append(os.path.normpath(os.path.join(os.getcwd(), __file__, '../../conf')))
 from ldapConf import *
 
 

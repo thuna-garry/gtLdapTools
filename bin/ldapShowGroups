@@ -1,9 +1,11 @@
 #! /usr/local/bin/python
 
 import sys
+import os.path
 import ldap
 from optparse import OptionParser
 
+sys.path.append(os.path.normpath(os.path.join(os.getcwd(), __file__, '../../conf')))
 from ldapConf import *
 from ldapUtil import *
 
@@ -18,9 +20,13 @@ modifiedBy="Garry Thuna"
 ###################################################################################
 # parse command line options
 ###################################################################################
-usage = "usage: %prog [options]" 
-description = "Find the maximum uidNumber and gidNumber used under " + BASE_DN
+usage = "usage: %prog [options] [cn1 [[cn2] [[...]]]" 
+description = "Print the list of groups defined under " + BASE_DN
 parser = OptionParser(usage=usage, version=version, description=description)
+parser.add_option("-m", "--membership", action="store_true", dest="showMembership", default=False,
+                        help="show members within each group [default: %default]")
+parser.add_option("-s", "--simple", action="store_false", dest="showMembership",
+                        help="do not show group membership information in the output")
 (options, args) = parser.parse_args()
 
 
@@ -50,33 +56,18 @@ groups,                \
 con.unbind_s()
 
 
-####################################################################################
-# calc the maximums
-####################################################################################
 print '==============================================================='
-print '= ID Numbers                                                  ='
+print '= Group list                                                  ='
 print '==============================================================='
-
-maxUidNumber = 0 
-maxUidNumberDN = ''
-for u in users:
-    cur = int(u[1]['uidNumber'][0])
-    if cur > maxUidNumber:
-        maxUidNumber = cur
-        maxUidNumberDN = u[0]
-
-maxGidNumber = 0 
-maxGidNumberDN = ''
 for g in groups:
-    cur = int(g[1]['gidNumber'][0])
-    if cur > maxGidNumber:
-        maxGidNumber = cur
-        maxGidNumberDN = g[0]
+    if len(args) > 0 and g[1]['cn'][0].lower() not in [a.lower() for a in args]:
+        continue
+    print (g[1]['cn'][0] + ' (' + g[1]['gidNumber'][0] + ') ').ljust(35) \
+        + 'dn: ' + g[0]
+    if options.showMembership:
+        if 'memberUid' in g[1]:
+            for m in g[1]['memberUid']:
+                print ''.ljust(12) + 'member: ' + m + \
+                      ' (' + uid2user[m][1]['cn'][0] + ')'
 
-print "max uidNumber: ", maxUidNumber, maxUidNumberDN
-print "max gidNumber: ", maxGidNumber, maxGidNumberDN
-print
-print "first available uidNumber: {0}  {1}-{2}".format(firstUnusedUidNumber(users),  SAMBA_SID_PREFIX, firstUnusedUidNumber(users) * 2) 
-print "first available gidNumber: {0}  {1}-{2}".format(firstUnusedGidNumber(groups), SAMBA_SID_PREFIX, firstUnusedGidNumber(groups) * 2 + 1)
-print
-    
+

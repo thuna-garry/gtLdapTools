@@ -1,10 +1,12 @@
 #! /usr/local/bin/python
 
 import sys
+import os.path
 import ldap
 from optparse import OptionParser
 import textwrap
 
+sys.path.append(os.path.normpath(os.path.join(os.getcwd(), __file__, '../../conf')))
 from ldapConf import *
 from ldapUtil import *
 

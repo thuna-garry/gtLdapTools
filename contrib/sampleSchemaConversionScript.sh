@@ -11,14 +11,14 @@
 ###############################################################################
 # globals
 ###############################################################################
-gtToolDir=${0%/*}
+gtToolDir=${0%/*}/..
 
 # set up the file names 
 inFile=$1
 outFile=$1.gt
 tmpFile=/tmp/${0##*/}.$$
 
-cat $inFile | ${gtToolDir}/ldifJoin > $tmpFile
+cat $inFile | ${gtToolDir}/bin/ldifJoin > $tmpFile
 
 ##########################################################
 # avmaxServer -> gtServer
@@ -65,7 +65,7 @@ sed -i -e 's/^gtwsACL\(.*\):r-x$/gtwsACL\1:view/'      $tmpFile
 ##########################################################
 # finish up
 ##########################################################
-cat $tmpFile | ${gtToolDir}/ldifSplit > $outFile
+cat $tmpFile | ${gtToolDir}/bin/ldifSplit > $outFile
 
 rm -f $tmpFile
 

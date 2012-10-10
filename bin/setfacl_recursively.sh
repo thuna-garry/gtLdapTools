@@ -8,9 +8,9 @@
 ###############################################################################
 # get user defined globals
 ###############################################################################
-gtToolDir=${0%/*}
+gtToolDir=${0%/*}/..
 
-eval "`$gtToolDir/ldapConf.py \
+eval "`$gtToolDir/conf/ldapConf.py \
         LOCAL_OS    \
         LOCAL_ACL   \
      `"

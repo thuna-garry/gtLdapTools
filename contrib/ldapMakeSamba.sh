@@ -12,7 +12,7 @@ export PATH
 ##################################################################
 gtToolDir=${0%/*}/..
 
-$gtToolDir/ldapMakeWorkspaces
-$gtToolDir/ldapMakeHomes
-$gtToolDir/ldapMakeFileDrop  $*
+$gtToolDir/bin/ldapMakeWorkspaces
+$gtToolDir/bin/ldapMakeHomes
+$gtToolDir/bin/ldapMakeFileDrop  $*
 
