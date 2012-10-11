@@ -2,13 +2,12 @@
 
 import sys
 import os
-import os.path
 import ldap
 import subprocess
 import tempfile
 from optparse import OptionParser
 
-sys.path.append(os.path.normpath(os.path.join(os.getcwd(), __file__, '../../conf')))
+sys.path.append(os.path.realpath(os.path.join(__file__, '..', '..', 'conf')))
 from ldapConf import *
 
 

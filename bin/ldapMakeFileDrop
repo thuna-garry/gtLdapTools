@@ -2,13 +2,12 @@
 
 import sys
 import os
-import os.path
 import ldap
 import subprocess
 from optparse import OptionParser
 import tempfile
 
-sys.path.append(os.path.normpath(os.path.join(os.getcwd(), __file__, '../../conf')))
+sys.path.append(os.path.realpath(os.path.join(__file__, '..', '..', 'conf')))
 from ldapConf import *
 from ldapUtil import *
 
@@ -23,7 +22,7 @@ modifiedBy="Garry Thuna"
 ###################################################################################
 # parse command line options
 ###################################################################################
-usage = "usage: %prog [options] workspace" 
+usage = "usage: %prog [options] <workspace name>" 
 description = "Creates within a workspace one directory for each user who's "  +\
               "home directory is on the serverr.  ACLs on these directories "  +\
               "are set so that all staff will be able to save files into any " +\
@@ -39,7 +38,7 @@ parser.add_option("-v", "--verbose", action="store_true", dest="verbose", defaul
 
 
 if len(args) != 1:
-    print >> sys.stderr, usage
+    parser.print_help(sys.stderr)
     sys.exit(1)
 targetWS = args[0]
 

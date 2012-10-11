@@ -13,6 +13,8 @@ export PATH
 gtToolDir=${0%/*}/..
 
 $gtToolDir/bin/ldapMakeWorkspaces
+echo one
 $gtToolDir/bin/ldapMakeHomes
+echo two
 $gtToolDir/bin/ldapMakeFileDrop  $*
 
