@@ -1,0 +1,3 @@
+[submodule "conf"]
+	path = conf
+	url = git@github.com:advanceQC-garry/gtLdapTools-config.git
