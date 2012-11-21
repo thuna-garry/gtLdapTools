@@ -24,9 +24,9 @@ modifiedBy="Garry Thuna"
 ###################################################################################
 usage = "usage: %prog [options] <workspace name>" 
 description = "Creates within a workspace one directory for each user who's "  +\
-              "home directory is on the serverr.  ACLs on these directories "  +\
+              "home directory is on the server.  ACLs on these directories "   +\
               "are set so that all staff will be able to save files into any " +\
-              "of the direcgtories but only the particular user whom the "     +\
+              "of the directories, but only the particular user whom the "     +\
               "directory is named after will be able to view or delete files"
 parser = OptionParser(usage=usage, version=version, description=description)
 parser.add_option("-f", "--force-acls", action="store_true", dest="force", default=False,

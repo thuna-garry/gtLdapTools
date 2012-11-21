@@ -50,16 +50,16 @@ sed -i -e 's/awsName=/gtwsName=/g'                 $tmpFile
 ##########################################################
 # avmaxGroup -> globalBotanical
 ##########################################################
-sed -i -e 's/avmaxGroup/globalBotanical/g'         $tmpFile
-sed -i -e 's/AVMAXGROUP/globalBotanical/g'         $tmpFile
+#sed -i -e 's/avmaxGroup/globalBotanical/g'         $tmpFile
+#sed -i -e 's/AVMAXGROUP/globalBotanical/g'         $tmpFile
 
 
 ##########################################################
 # acls 
 ##########################################################
 sed -i -e 's/quest/admin/g'                        $tmpFile
-sed -i -e 's/^gtwsACL\(.*\):rwx$/gtwsACL\1:work/'      $tmpFile
-sed -i -e 's/^gtwsACL\(.*\):r-x$/gtwsACL\1:view/'      $tmpFile
+sed -i -e 's/^gtwsACL\(.*\):rwx$/gtwsACL\1:work/'  $tmpFile
+sed -i -e 's/^gtwsACL\(.*\):r-x$/gtwsACL\1:view/'  $tmpFile
 
 
 ##########################################################
