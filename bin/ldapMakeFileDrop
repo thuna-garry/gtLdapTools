@@ -114,13 +114,15 @@ for ws in workspaces:
             continue
 
         if options.verbose: 
-            print 'processing user:',
+            print '\nprocessing user:',
             print uid \
                 + '  (' + uAttrs['uidNumber'][0] + ')  ' \
                 + 'dn: ' + uDn
 
         # create user's file drop directory
         userDir = os.path.join(wsDir, uid)
+        if 'cn' in uAttrs:
+            userDir = userDir + " [" + uAttrs['cn'][0].replace(" ", "_").replace("'", "") + "]"
         if options.verbose: 
             print '    ensuring user file drop directory exists:       ' + userDir
         p = subprocess.Popen([ "mkdir", "-p", userDir ]); p.wait()

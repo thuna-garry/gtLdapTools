@@ -98,10 +98,10 @@ rootDir="$2"      # $2 the root directory to which the ACL is to be applied
 # make the changes to a dummy dir so we can test against the rootDir
 # the tmpDir must be on a volume/dataset that permits setting of ACLs
 testDir=${rootDir%/*}/tmp_aclDir_$$
-mkdir $testDir
-[ "$uid" ]   && chown $uid   $testDir
-[ "$gid" ]   && chgrp $gid   $testDir
-[ "$perms" ] && chmod $perms $testDir
+mkdir "$testDir"
+[ "$uid" ]   && chown $uid   "$testDir"
+[ "$gid" ]   && chgrp $gid   "$testDir"
+[ "$perms" ] && chmod $perms "$testDir"
 
 # check rootDir permissions
 if [ "$uid" ]; then
@@ -133,7 +133,7 @@ if [ "$perms" ]; then
     [ "$VERBOSE"  -a "$p1" != "$p2" ] && echo "        perms (is=$p1 shouldBe=$p2)   $rootDir"
     if [ "$force" -o "$p1" != "$p2" ]; then
         [ "$VERBOSE" ] && echo "        applying permission change ($perms)          $rootDir"
-        chmod -R $perms $rootDir
+        chmod -R $perms "$rootDir"
     fi
 fi
 
@@ -147,32 +147,32 @@ if [ "$LOCAL_ACL" = "posix" ]; then
 
     # set the ACL on the testDir so we can comparte to the rootDir
     [ "$VERBOSE" ] && echo "        testing acls on directory:                  $testDir/"
-    setfacl -bM  ${aclFile}.dir "$testDir"
-    setfacl -dM  ${aclFile}.def "$testDir"  #prevent core dump with -b on dir that has never had default acl set
-    setfacl -bdM ${aclFile}.def "$testDir"
+    setfacl -bM  "${aclFile}.dir" "$testDir"
+    setfacl -dM  "${aclFile}.def" "$testDir"  #prevent core dump with -b on dir that has never had default acl set
+    setfacl -bdM "${aclFile}.def" "$testDir"
 
     # compare acls on testDir to rootDir
-    getfacl    $testDir | egrep "^user|^group|^other|^mask" >  $testDir/test.acls
-    getfacl -d $testDir | egrep "^user|^group|^other|^mask" >> $testDir/test.acls
-    getfacl    $rootDir | egrep "^user|^group|^other|^mask" >  $testDir/root.acls
-    getfacl -d $rootDir | egrep "^user|^group|^other|^mask" >> $testDir/root.acls
-    diffFound=`diff -q $testDir/test.acls $testDir/root.acls`
+    getfacl    "$testDir" | egrep "^user|^group|^other|^mask" >  "$testDir/test.acls"
+    getfacl -d "$testDir" | egrep "^user|^group|^other|^mask" >> "$testDir/test.acls"
+    getfacl    "$rootDir" | egrep "^user|^group|^other|^mask" >  "$testDir/root.acls"
+    getfacl -d "$rootDir" | egrep "^user|^group|^other|^mask" >> "$testDir/root.acls"
+    diffFound=`diff -q "$testDir/test.acls" "$testDir/root.acls"`
     [ "$VERBOSE" -a -z "$diffFound" ] && echo "        acls current: application skipped           $rootDir/"
     [ "$DEBUG"   -a    "$diffFound" ] && echo "        acl changes needed:                         $rootDir/"
     
     # apply changes if necessary
     if [ "$diffFound" -o "$force" ]; then
         if [ "$LOCAL_OS" = 'linux' ]; then
-            setfacl -R --set-file ${aclFile}.tidy $rootDir
+            setfacl -R --set-file "${aclFile}.tidy" "$rootDir"
         elif [ "$LOCAL_OS" = 'bsd' ]; then
             find "$rootDir" | while read f; do
                 if [ -d "$f" ]; then
                     [ "$VERBOSE" ] && echo "        setting acls for directory:                 $f/"
-                    setfacl -bM  ${aclFile}.dir "$f"
-                    setfacl -dM  ${aclFile}.def "$f"  #prevent core dump with -b on dir that has never had default acl set
-                    setfacl -bdM ${aclFile}.def "$f"
+                    setfacl -bM  "${aclFile}.dir" "$f"
+                    setfacl -dM  "${aclFile}.def" "$f"  #prevent core dump with -b on dir that has never had default acl set
+                    setfacl -bdM "${aclFile}.def" "$f"
                 elif [ -f "$f" ]; then
-                    setfacl -bM ${aclFile}.file "$f"
+                    setfacl -bM "${aclFile}.file" "$f"
                 fi
             done
         fi
@@ -180,21 +180,21 @@ if [ "$LOCAL_ACL" = "posix" ]; then
 
 elif [ "$LOCAL_ACL" = "NFSv4" ]; then
     # create separate templates for directories and files
-    cat $aclFile  > ${aclFile}.dir
-    cat $aclFile | sed -e 's/^\([^:]*:[^:]*:[^:]*:\)[^:]*\(:.*\)$/\1\2/' \
-                 | sed -e 's/^\(.*@:[^:]*:\)[^:]*\(:.*\)$/\1\2/'         \
-                 > ${aclFile}.file
+    cat "$aclFile" > "${aclFile}.dir"
+    cat "$aclFile" | sed -e 's/^\([^:]*:[^:]*:[^:]*:\)[^:]*\(:.*\)$/\1\2/' \
+                   | sed -e 's/^\(.*@:[^:]*:\)[^:]*\(:.*\)$/\1\2/'         \
+                   > "${aclFile}.file"
 
     # set the ACL on the testDir so we can comparte to the rootDir
     [ "$VERBOSE" ] && echo "        testing acls on directory:        $testDir/"
-    setfacl -bM  ${aclFile}.dir "$testDir"
+    setfacl -bM  "${aclFile}.dir" "$testDir"
 
     # compare acls on testDir to rootDir
-    getfacl    $testDir | grep -v "^#" >  $testDir/test.acls
-    getfacl -d $testDir | grep -v "^#" >> $testDir/test.acls
-    getfacl    $rootDir | grep -v "^#" >  $testDir/root.acls
-    getfacl -d $rootDir | grep -v "^#" >> $testDir/root.acls
-    diffFound=`diff -q $testDir/test.acls $testDir/root.acls`
+    getfacl    "$testDir" | grep -v "^#" >  "$testDir/test.acls"
+    getfacl -d "$testDir" | grep -v "^#" >> "$testDir/test.acls"
+    getfacl    "$rootDir" | grep -v "^#" >  "$testDir/root.acls"
+    getfacl -d "$rootDir" | grep -v "^#" >> "$testDir/root.acls"
+    diffFound=`diff -q "$testDir/test.acls" "$testDir/root.acls"`
     [ "$VERBOSE" -a -z "$diffFound" ] && echo "        acls require no change on:        $rootDir/"
 
     # apply changes if necessary
@@ -202,16 +202,16 @@ elif [ "$LOCAL_ACL" = "NFSv4" ]; then
         find "$rootDir" | while read f; do
             if [ -d "$f" ]; then
                 [ "$VERBOSE" ] && echo "        setting acls for directory:       $f/"
-                setfacl -bM  ${aclFile}.dir "$f"
+                setfacl -bM  "${aclFile}.dir" "$f"
             elif [ -f "$f" ]; then
-                setfacl -bM ${aclFile}.file "$f"
+                setfacl -bM "${aclFile}.file" "$f"
             fi
         done
     fi
 fi
 
-[ "$DEBUG" ] || rm -f  ${aclFile}.*
-[ "$DEBUG" ] || rm -rf ${testDir}
+[ "$DEBUG" ] || rm -f  "${aclFile}.*"
+[ "$DEBUG" ] || rm -rf "${testDir}"
 [ "$DEBUG" ] && echo "        -------------- out $0 ----------------"
 [ "$DEBUG" ] && echo
 exit 0
