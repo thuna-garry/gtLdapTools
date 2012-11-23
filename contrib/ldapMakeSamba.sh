@@ -16,20 +16,20 @@ echo
 echo "========================================================================="
 echo "= ldapMakeWorkspaces                                                    ="
 echo "========================================================================="
-$gtToolDir/bin/ldapMakeWorkspaces
+$gtToolDir/bin/ldapMakeWorkspaces -v
 
 echo;echo
 echo "========================================================================="
 echo "= ldapMakeHomes                                                         ="
 echo "========================================================================="
-$gtToolDir/bin/ldapMakeHomes
+$gtToolDir/bin/ldapMakeHomes -v
 
 if [ $# -eq 1 ]; then
     echo;echo
     echo "========================================================================="
     echo "= ldapMakeFileDrop                                                      ="
     echo "========================================================================="
-    $gtToolDir/bin/ldapMakeFileDrop  $*
+    $gtToolDir/bin/ldapMakeFileDrop -v $*
 fi
 
 

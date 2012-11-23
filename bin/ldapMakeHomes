@@ -81,7 +81,10 @@ for u in users:
             shareComment = 'home directory of ' + attrs['cn'][0],
             sharePath    = userDir
         )
-    smbConf = smbConf + SAMBA_RECYCLE_TEMPLATE  #all users get recycle bins
+    #all users get recycle bins
+    smbConf = smbConf + SAMBA_RECYCLE_TEMPLATE.format(
+            recycleDir = os.path.join(SAMBA_USER_HOME, SAMBA_RECYCLE_DIR)
+        ) 
 
     # were specific users specified on the command line
     if len(args) > 0 and uid.lower() not in [a.lower() for a in args]:
@@ -113,7 +116,8 @@ for u in users:
 
     if options.verbose:
         print '    setting ownership and permissions on: ' + homeDir
-    setOwnerGroupPerms(homeDir,    uid,      MEMBERLESS_GID, 02770)
+    setOwnerGroupPerms(homeDir,    uid,      MEMBERLESS_GID, 02770, applyTo='d')
+    setOwnerGroupPerms(homeDir,    uid,      MEMBERLESS_GID, 00660, applyTo='f')
 
     # determine the unique set of workspaces that the user can access
     accessibleWsNames= list()

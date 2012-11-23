@@ -15,19 +15,19 @@ modifiedBy="Garry Thuna"
 # OS specific constants
 ###################################################################################
 GT_TOOLS_DIR = os.path.realpath(os.path.join(__file__, '../..'))
-OPENLDAP_DIR = '/etc/openldap'
+OPENLDAP_DIR = '/usr/local/etc/openldap'
 TMP_DIR = '/tmp'
 
 
 ###################################################################################
 # local server specific constants
 ###################################################################################
-LOCAL_OS = 'linux'              #must be either 'linux' or 'bsd'
+LOCAL_OS = 'bsd'                #must be either 'linux' or 'bsd'
 LOCAL_ACL = 'posix'             #must be either 'posix' or 'NFSv4'
 ORGANIZATION = 'avmaxGroup'
 DOMAIN = 'avmaxGroup.com'
-SERVER_SHORT_NAME = 'dirSrv2peg.yyc'
-MASTER_SHORT_NAME = 'dirSrv2peg.yyc'
+SERVER_SHORT_NAME = 'files3peg.yyc'
+MASTER_SHORT_NAME = 'files3peg.yyc'
 
 
 ###################################################################################
@@ -148,11 +148,11 @@ SAMBA_HOME_TEMPLATE = '''
         ;oplocks = False
         ;level2 oplocks = False
 
-        vfs objects = zfsacl
-        acl check permissions = False
-        nfs4: mode = special
-        nfs4: chown = true
-        nfs4: acedup = merge
+        ;vfs objects = zfsacl
+        ;acl check permissions = False
+        ;nfs4: mode = special
+        ;nfs4: chown = true
+        ;nfs4: acedup = merge
 
 '''
 
@@ -180,18 +180,17 @@ SAMBA_WORKSPACE_TEMPLATE = '''
         ;oplocks = False
         ;level2 oplocks = False
 
-        vfs objects = zfsacl
-        acl check permissions = False
-        nfs4: mode = special
-        nfs4: chown = true
-        nfs4: acedup = merge
+        ;vfs objects = zfsacl
+        ;acl check permissions = False
+        ;nfs4: mode = special
+        ;nfs4: chown = true
+        ;nfs4: acedup = merge
 
 '''
 
 
 SAMBA_RECYCLE_TEMPLATE = '''
         vfs objects = recycle
-
         recycle:repository = {recycleDir}
         recycle:keeptree = yes
         recycle:versions = yes
@@ -202,7 +201,7 @@ SAMBA_RECYCLE_TEMPLATE = '''
         ;excludedir = /tmp|/temp|/cache
         ;noversions = *.doc|*.ppt|*.dat|*.ini
 
-'''.format(recycleDir=SAMBA_RECYCLE_DIR)
+'''
 
 
 

@@ -31,15 +31,35 @@ def getDNattr(dn, attr):
 
 ###################################################################################
 # utility:  set the ownership and permissions of a file/directory
+#     applyTo - must be one of
+#               ""    apply permissions only to specified path (the default)
+#               "*"   apply permissions recursively to path
+#               "d"   apply permissions recursively only to directories
+#               "f"   apply permissions recursively only to files
 ###################################################################################
-def setOwnerGroupPerms(path, owner, group, perms):
+def setOwnerGroupPerms(path, owner, group, perms, applyTo=""):
     og = owner + ':' + group
-    p = subprocess.Popen([ "chown", "-h", og, path ]); p.wait()
+    if applyTo == "":
+        p = subprocess.Popen([ "chown", "-h",  og, path ]); p.wait()
+    else:
+        p = subprocess.Popen([ "chown", "-hR", og, path ]); p.wait()
     if p.returncode:
         print >> sys.stderr, '  *** Error setting ownership: (' + og + ') on ' + path
 
     # set the path permissions
-    os.chmod(path, perms)
+    if applyTo == "":
+        os.chmod(path, perms)
+    elif applyTo == "*":
+        p = subprocess.Popen([ "chmod", "-R", oct(perms), path]); p.wait()
+    elif applyTo == "d":
+        p = subprocess.Popen([ "find", path, "-type", "d", "-exec", "chmod", oct(perms), "{}", ";" ]); p.wait()
+    elif applyTo == "f":
+        p = subprocess.Popen([ "find", path, "-type", "f", "-exec", "chmod", oct(perms), "{}", ";" ]); p.wait()
+    else:
+        assert False, "'applyTo' has unexpected value (" + applyTo + ")"
+
+    if p.returncode:
+        print >> sys.stderr, '  *** Error setting file modes: (' + str(perms) + ') on ' + path
 
 
 ###################################################################################
@@ -129,8 +149,8 @@ def queryWorkspace(con):
     baseDN = BASE_DN
     filter = '(&(objectClass=gtWorkspace)(gtwsName=*))'
     attrs  = [ 'gtwsName', 'gtwsRelativePath', 'gtwsACL', 'gtwsLinkFile'
-             , 'gtwsOwnerUid', 'gtwsAdministratorUid', 'gtwsHasRecycleBin'
-             , 'description' ]
+             , 'gtwsOwnerUid', 'gtwsAdministratorUid', 'gtwsRecycleBinDays'
+             , 'gtwsSambaOption', 'description' ]
     qr = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
     return qr
 
@@ -262,29 +282,30 @@ def preProcessLdapObjects(con):
     uid2gtwsName = dict()
     for ws in workspaces:
         dn, attrs = ws
-        for acl in attrs['gtwsACL']:
-            if acl.lower().startswith('group:'):
-                gid = acl.split(':')[1]
-                try:                           # sanity check that the gid is valid
-                    exists = gid2group[gid]
-                except KeyError, e:
-                    print >>sys.stderr, "DN: " + dn + "\n" +\
-                                        "    has acl referring to group '" + gid + "' which was not found."
-                    continue
-                if gid not in gid2gtwsName:
-                    gid2gtwsName[gid] = list()
-                gid2gtwsName[gid].append( getQualGtwsName(ws) )
-            if acl.lower().startswith('user:'):
-                uid = acl.split(':')[1]
-                try:                           # sanity check that the uid is valid
-                    exists = uid2user[uid]
-                except KeyError, e:
-                    print >>sys.stderr, "DN: " + dn + "\n" +\
-                                        "    has acl referring to user '" + uid + "' which was not found."
-                    continue
-                if uid not in uid2gtwsName:
-                    uid2gtwsName[uid] = list()
-                uid2gtwsName[uid].append( getQualGtwsName(ws) )
+        if 'gtwsACL' in attrs:
+            for acl in attrs['gtwsACL']:
+                if acl.lower().startswith('group:'):
+                    gid = acl.split(':')[1]
+                    try:                           # sanity check that the gid is valid
+                        exists = gid2group[gid]
+                    except KeyError, e:
+                        print >>sys.stderr, "DN: " + dn + "\n" +\
+                                            "    has acl referring to group '" + gid + "' which was not found."
+                        continue
+                    if gid not in gid2gtwsName:
+                        gid2gtwsName[gid] = list()
+                    gid2gtwsName[gid].append( getQualGtwsName(ws) )
+                if acl.lower().startswith('user:'):
+                    uid = acl.split(':')[1]
+                    try:                           # sanity check that the uid is valid
+                        exists = uid2user[uid]
+                    except KeyError, e:
+                        print >>sys.stderr, "DN: " + dn + "\n" +\
+                                            "    has acl referring to user '" + uid + "' which was not found."
+                        continue
+                    if uid not in uid2gtwsName:
+                        uid2gtwsName[uid] = list()
+                    uid2gtwsName[uid].append( getQualGtwsName(ws) )
 
 
     ###############################################################################

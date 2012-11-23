@@ -131,7 +131,7 @@ for ws in workspaces:
         cmd = [ os.path.join( os.path.split(sys.argv[0])[0], "setfacl_recursively.sh" ), 
                 '-u', uid,
                 '-g', MEMBERLESS_GID,
-                '-p', '02770', 
+                '-p', '0770', 
                 fname, userDir ]
         if options.force:
             cmd.insert(1, '-f')
