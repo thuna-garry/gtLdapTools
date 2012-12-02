@@ -78,7 +78,10 @@ for g in groups:
 print "max uidNumber: ", maxUidNumber, maxUidNumberDN
 print "max gidNumber: ", maxGidNumber, maxGidNumberDN
 print
-print "first available uidNumber: {0}  {1}-{2}".format(firstUnusedUidNumber(users),  SAMBA_SID_PREFIX, firstUnusedUidNumber(users) * 2) 
-print "first available gidNumber: {0}  {1}-{2}".format(firstUnusedGidNumber(groups), SAMBA_SID_PREFIX, firstUnusedGidNumber(groups) * 2 + 1)
+print "next uidNumber: {0}  {1}-{2}".format(maxUidNumber + 1, SAMBA_SID_PREFIX, (maxUidNumber + 1) * 2) 
+print "next gidNumber: {0}  {1}-{2}".format(maxGidNumber + 1, SAMBA_SID_PREFIX, (maxGidNumber + 1) * 2 + 1)
+print
+print "lowest available uidNumber: {0}  {1}-{2}".format(firstUnusedUidNumber(users),  SAMBA_SID_PREFIX, firstUnusedUidNumber(users) * 2) 
+print "lowest available gidNumber: {0}  {1}-{2}".format(firstUnusedGidNumber(groups), SAMBA_SID_PREFIX, firstUnusedGidNumber(groups) * 2 + 1)
 print
     
