@@ -13,9 +13,10 @@
 gtToolDir=${0%/*}
 
 eval "`$gtToolDir/ldapConf.py \
-        MASTER_FQDN    \
-        OPENLDAP_DIR   \
-        TMP_DIR        \
+        OPENLDAP_DIR          \
+        OPENLDAP_DB_DIR       \
+        TMP_DIR               \
+        MASTER_FQDN           \
      `"
 
 tmpDir=$TMP_DIR/${0##*/}.$$
@@ -36,14 +37,15 @@ for f in $tmpDir.1/*; do
     if [ $? -ne 0 ]; then
         continue
     fi
-    cat $f                         |\
-        sed 's/write$/read/i'      |\
-        cat > $tmpDir.2/${f##*/}
+    cat $f                                                       \
+        | sed -i -e "s/write$/read/i"                            \
+                 -e "/^include/s:/.*openldap/:$OPENLDAP_DIR/:i"  \
+                 -e "/^directory/s:/.*/:$OPENLDAP_DB_DIR/:i"
 done
 
 # see if new files are different than current
 foundDiff=""
-for f in $tmpDir.2/*; do
+for f in $tmpDir.1/*; do
     foundDiff=`diff -q $f $confDir/${f##*/}`
     if [ -n "$foundDiff" ]; then
         echo "diff found in file: $confDir/${f##*/}"
@@ -51,7 +53,7 @@ for f in $tmpDir.2/*; do
     fi
 done
 if [ -n "$foundDiff" ]; then
-    rsync -av --progress $tmpDir.2/ $confDir/  >/dev/null
+    rsync -av --progress $tmpDir.1/ $confDir/  >/dev/null
     restart=1
 fi
 

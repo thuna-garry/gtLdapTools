@@ -199,13 +199,14 @@ def preProcessLdapObjects(con):
     ###############################################################################
     qr = queryUserGroup(con)
     qrSorted = sorted( qr, key=lambda r: ','.join(r[0].split(',')[::-1]).lower() )
-    groups = [ r for r in qrSorted if r[0].lower().find(',ou=groups,') + 1 ]
-    users  = [ r for r in qrSorted if r[0].lower().find(',ou=users,') + 1 ]
+    groups = [ r for r in qrSorted if r[0].lower().startswith('cn=')  ]
+    users  = [ r for r in qrSorted if r[0].lower().startswith('uid=') ]
 
     # build a gid to groups' index mapping
     gid2group = dict()
     for g in groups:
         gid2group[g[1]['cn'][0]] = g
+        print g[0]
 
     # build a uid to users' index mapping
     uid2user = dict()
