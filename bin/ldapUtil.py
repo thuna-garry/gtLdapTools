@@ -206,7 +206,6 @@ def preProcessLdapObjects(con):
     gid2group = dict()
     for g in groups:
         gid2group[g[1]['cn'][0]] = g
-        print g[0]
 
     # build a uid to users' index mapping
     uid2user = dict()
