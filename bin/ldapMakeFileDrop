@@ -119,22 +119,21 @@ for ws in workspaces:
         p = subprocess.Popen([ "mkdir", "-p", userDir ]); p.wait()
         if p.returncode:
             print >> sys.stderr, '  *** Error (re)creating directory: ' + userDir
+        setOwnerGroupPerms(userDir, uid, uid, 02770)
 
         # assemble the acls in a tempFile
         fd, fname = tempfile.mkstemp(prefix='aclFile_', suffix='.tmp')
         if options.verbose: 
             print '    writing acls to a temp file ' 
         with open(fname, 'w') as f:
+            f.write(ACL_POSIX_WORKSPACE_WORK.format(tag='group', qualifier=uid) + '\n')
             f.write(ACL_POSIX_WORKSPACE_FILEDROP.format(tag='group', qualifier=MEMBERFULL_GID) + '\n' )
-            f.write(ACL_POSIX_WORKSPACE_WORK.format(tag='group', qualifier=uid) + '\n' )
             f.write(ACL_POSIX_WORKSPACE_TRAILER + '\n' )
         os.close(fd)
 
         # construct the command to apply the acls
         cmd = [ os.path.join( os.path.split(sys.argv[0])[0], "setfacl_recursively.sh" ), 
-                '-u', uid,
                 '-g', uid,
-                '-p', '2770', 
                 fname, userDir ]
         if options.force:
             cmd.insert(1, '-f')
