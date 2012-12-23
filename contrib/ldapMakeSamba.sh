@@ -32,4 +32,9 @@ if [ $# -eq 1 ]; then
     $gtToolDir/bin/ldapMakeFileDrop -v $*
 fi
 
+echo;echo
+echo "========================================================================="
+echo "= reload samba
+echo "========================================================================="
+service samba reload
 
