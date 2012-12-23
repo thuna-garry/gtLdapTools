@@ -140,8 +140,8 @@ def firstUnusedUidNumber(users):
 ###################################################################################
 def queryUserGroup(con):
     baseDN = BASE_DN
-    filter = '(|(objectClass=posixAccount)(objectClass=posixGroup))'
-    attrs  = [ 'uidNumber', 'uid', 'cn', 'gidNumber', 'memberUid', 'sambaHomePath' ]
+    filter = '(|(objectClass=sambaSamAccount)(objectClass=posixGroup))'
+    attrs  = [ 'objectClass', 'uidNumber', 'uid', 'cn', 'gidNumber', 'memberUid', 'sambaHomePath' ]
     qr = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
     return qr
 

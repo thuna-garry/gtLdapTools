@@ -98,6 +98,9 @@ if BIND_TLS:
     con.start_tls_s()
 con.simple_bind_s(BIND_DN, BIND_PW)
 
+#--------------
+#- workspaces
+#--------------
 # get all workspaces on this server that have any of the following defined
 #   gtwsPurgeHours  gtwsRecycleBinDays
 baseDN = BASE_DN_SERVER
@@ -129,6 +132,44 @@ for ws in workspaces:
         maxAge = int(attrs['gtwsRecycleBinDays'][0]) * 24 * 3600   # max age in seconds
         scrubDir(path, maxAge, 0, [])
 
+
+#--------------
+#- workspaces
+#--------------
+# get all workspaces on this server that have any of the following defined
+#   gtwsPurgeHours  gtwsRecycleBinDays
+baseDN = BASE_DN_SERVER
+filter = '(&(objectClass=gtWorkspace)(|(gtwsPurgeHours=*)(gtwsRecycleBinDays=*)))'
+attrs  = [ 'gtwsName', 'gtwsRecycleBinDays', 'gtwsPurgeHours', 'gtwsPurgeMinDepth' ]
+workspaces = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
+
+# for each workspace determine what needs to be cleaned up
+for ws in workspaces:
+    dn, attrs = ws
+    path = os.path.join(SAMBA_WORKSPACE, SERVER_SHORT_NAME, getWorkspaceRelativePath(con, ws))
+
+    if 'gtwsPurgeHours' in attrs:
+        maxAge = int(attrs['gtwsPurgeHours'][0]) * 3600  # max age in seconds
+
+        # calculate the working depth from the supplied gtwsPurgeMinDepth
+        minDepth = 1
+        if 'gtwsPurgeMinDepth' in attrs:
+            minDepth = int(attrs['gtwsPurgeMinDepth'][0])
+
+        # exclude directories of child workspaces
+        childrenRelativePaths = getChildrenRelativePaths(con, dn)
+
+        # do it
+        scrubDir(path, maxAge, minDepth, childrenRelativePaths)
+
+    if 'gtwsRecycleBinDays' in attrs:
+        path = os.path.join(path, SAMBA_RECYCLE_DIR)
+        maxAge = int(attrs['gtwsRecycleBinDays'][0]) * 24 * 3600   # max age in seconds
+        scrubDir(path, maxAge, 0, [])
+
+
+#--------------
 # close the connection
+#--------------
 con.unbind_s()
 

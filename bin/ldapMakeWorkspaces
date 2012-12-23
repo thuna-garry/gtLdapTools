@@ -167,60 +167,61 @@ for ws in workspaces:
 
     # build and apply the ACLs
     if 'gtwsACL' in attrs:
-
         # for the wsDir: assemble the acls in a temp file
         fd, fname = tempfile.mkstemp()
-        didMemberfull = False
-        with open(fname, 'w') as f:
-            if LOCAL_ACL == 'posix':
-                for acl in attrs['gtwsACL']:
-                    aclTag, aclTarget, aclAccess = acl.split(':')
-                    if aclTag == "group" and aclTarget == MEMBERFULL_GID:
-                        didMemberfull = True
-                    if aclAccess == 'view':
-                        f.write(ACL_POSIX_WORKSPACE_VIEW.format(tag=aclTag, qualifier=aclTarget) + '\n' )
-                    elif aclAccess == 'work':
-                        f.write(ACL_POSIX_WORKSPACE_WORK.format(tag=aclTag, qualifier=aclTarget) + '\n' )
-                if not didMemberfull:
-                    f.write(ACL_POSIX_WORKSPACE_TRAVERSE.format(tag='group', qualifier=MEMBERFULL_GID) + '\n' )
-                f.write(ACL_POSIX_WORKSPACE_TRAILER + '\n' )
+        try:
+            didMemberfull = False
+            with open(fname, 'w') as f:
+                if LOCAL_ACL == 'posix':
+                    for acl in attrs['gtwsACL']:
+                        aclTag, aclTarget, aclAccess = acl.split(':')
+                        if aclTag == "group" and aclTarget == MEMBERFULL_GID:
+                            didMemberfull = True
+                        if aclAccess == 'view':
+                            f.write(ACL_POSIX_WORKSPACE_VIEW.format(tag=aclTag, qualifier=aclTarget) + '\n' )
+                        elif aclAccess == 'work':
+                            f.write(ACL_POSIX_WORKSPACE_WORK.format(tag=aclTag, qualifier=aclTarget) + '\n' )
+                    if not didMemberfull:
+                        f.write(ACL_POSIX_WORKSPACE_TRAVERSE.format(tag='group', qualifier=MEMBERFULL_GID) + '\n' )
+                    f.write(ACL_POSIX_WORKSPACE_TRAILER + '\n' )
 
-            elif LOCAL_ACL == 'NFSv4':
-                for acl in attrs['gtwsACL']:
-                    aclTag, aclTarget, aclAccess = acl.split(':')
-                    if aclTag == "group" and aclTarget == MEMBERFULL_GID:
-                        didMemberfull = True
-                    if aclAccess == 'view':
-                        f.write(ACL_NFSV4_WORKSPACE_VIEW.format(tag=aclTag, qualifier=aclTarget) + '\n' )
-                    elif aclAccess == 'work':
-                        f.write(ACL_NFSV4_WORKSPACE_WORK.format(tag=aclTag, qualifier=aclTarget) + '\n' )
-                if not didMemberfull:
-                    f.write(ACL_NFSV4_WORKSPACE_TRAVERSE.format(tag='group', qualifier=MEMBERFULL_GID) + '\n' )
-                f.write(ACL_NFSV4_WORKSPACE_TRAILER + '\n' )
-        os.close(fd)
+                elif LOCAL_ACL == 'NFSv4':
+                    for acl in attrs['gtwsACL']:
+                        aclTag, aclTarget, aclAccess = acl.split(':')
+                        if aclTag == "group" and aclTarget == MEMBERFULL_GID:
+                            didMemberfull = True
+                        if aclAccess == 'view':
+                            f.write(ACL_NFSV4_WORKSPACE_VIEW.format(tag=aclTag, qualifier=aclTarget) + '\n' )
+                        elif aclAccess == 'work':
+                            f.write(ACL_NFSV4_WORKSPACE_WORK.format(tag=aclTag, qualifier=aclTarget) + '\n' )
+                    if not didMemberfull:
+                        f.write(ACL_NFSV4_WORKSPACE_TRAVERSE.format(tag='group', qualifier=MEMBERFULL_GID) + '\n' )
+                    f.write(ACL_NFSV4_WORKSPACE_TRAILER + '\n' )
+                os.close(fd)
 
-        # construct the command to apply the acls
-        wsDir = os.path.join(SAMBA_WORKSPACE, server, path)
-        cmd = [ os.path.join( os.path.split(sys.argv[0])[0], "setfacl_recursively.sh" ),
-                '-u', attrs['gtwsOwnerUid'][0],
-                '-g', MEMBERLESS_GID,
-                '-p', '02770',
-                fname, wsDir ]
-        if options.force:
-            cmd.insert(1, '-f')
+            # construct the command to apply the acls
+            wsDir = os.path.join(SAMBA_WORKSPACE, server, path)
+            cmd = [ os.path.join( os.path.split(sys.argv[0])[0], "setfacl_recursively.sh" ),
+                    '-u', attrs['gtwsOwnerUid'][0],
+                    '-g', MEMBERLESS_GID,
+                    '-p', '02770',
+                    fname, wsDir ]
+            if options.force:
+                cmd.insert(1, '-f')
     
-        # apply them
-        if options.verbose: 
-            print '    applying ACLs to workspace:           ' + wsDir
-            p = subprocess.Popen(cmd); p.wait()
-        else:
-            with open('/dev/null', 'w') as f:
-                p = subprocess.Popen(cmd, stdout=f); p.wait()
-        if p.returncode:
-            print >> sys.stderr, '  *** Error applying ACLs: ' + wsDir + " (" + str(p.returncode) + ")"
+            # apply them
+            if options.verbose: 
+                print '    applying ACLs to workspace:           ' + wsDir
+                p = subprocess.Popen(cmd); p.wait()
+            else:
+                with open('/dev/null', 'w') as f:
+                    p = subprocess.Popen(cmd, stdout=f); p.wait()
+            if p.returncode:
+                print >> sys.stderr, '  *** Error applying ACLs: ' + wsDir + " (" + str(p.returncode) + ")"
     
-        # for the wsDir: cleanup temp file
-        os.unlink(fname)
+        finally:
+            # for the wsDir: cleanup temp file
+            os.unlink(fname)
  
 # write out the smb conf for workspaces
 with open(os.path.join(SAMBA_ROOT, SAMBA_WORKSPACE_CONF), 'w') as f:

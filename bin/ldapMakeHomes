@@ -5,7 +5,6 @@ import os
 import ldap
 import subprocess
 from optparse import OptionParser
-import tempfile
 
 sys.path.append(os.path.realpath(os.path.join(__file__, '..', '..', 'conf')))
 from ldapConf import *
@@ -30,6 +29,9 @@ description = "Ensures that the user's home directory exists; "  +\
 parser = OptionParser(usage=usage, version=version, description=description)
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
                         help="show changes made to file system [default: %default]")
+parser.add_option("-f", "--force-perms", action="store_true", dest="force", default=False,
+                        help="force the recursive application of permissions (only needed " +\
+                             "if the user's home was migrated/copied from somewhere else)")
 (options, args) = parser.parse_args()
 
 
@@ -108,16 +110,19 @@ for u in users:
     # correct permissions
     if options.verbose: 
         print '    setting ownership and permissions on: ' + SAMBA_HOME
-    setOwnerGroupPerms(SAMBA_HOME, ROOT_UID, MEMBERFULL_GID, 00510)
+    setOwnerGroupPerms(SAMBA_HOME,  ROOT_UID, MEMBERFULL_GID, 00510)
 
     if options.verbose:
         print '    setting ownership and permissions on: ' + userDir
-    setOwnerGroupPerms(userDir,    uid,      MEMBERLESS_GID, 02550)
+    setOwnerGroupPerms(userDir,     uid,      MEMBERLESS_GID, 02550)
 
     if options.verbose:
         print '    setting ownership and permissions on: ' + homeDir
-    setOwnerGroupPerms(homeDir,    uid,      MEMBERLESS_GID, 02770, applyTo='d')
-    setOwnerGroupPerms(homeDir,    uid,      MEMBERLESS_GID, 00660, applyTo='f')
+    if options.force:
+        setOwnerGroupPerms(homeDir, uid,      MEMBERLESS_GID, 02770, applyTo='d')
+        setOwnerGroupPerms(homeDir, uid,      MEMBERLESS_GID, 00660, applyTo='f')
+    else:
+        setOwnerGroupPerms(homeDir, uid,      MEMBERLESS_GID, 02770)
 
     # determine the unique set of workspaces that the user can access
     accessibleWsNames= list()

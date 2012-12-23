@@ -95,15 +95,7 @@ rootDir="$2"      # $2 the root directory to which the ACL is to be applied
 [ "$DEBUG" ] && echo "        aclFile=$1"
 [ "$DEBUG" ] && echo "        rootDir=$2"
 
-# make the changes to a dummy dir so we can test against the rootDir
-# the tmpDir must be on a volume/dataset that permits setting of ACLs
-testDir=${rootDir%/*}/tmp_aclDir_$$
-mkdir "$testDir"
-[ "$uid" ]   && chown $uid   "$testDir"
-[ "$gid" ]   && chgrp $gid   "$testDir"
-[ "$perms" ] && chmod $perms "$testDir"
-
-# check rootDir permissions
+# check rootDir ownership
 if [ "$uid" ]; then
     u=`ls -ld "$rootDir" | awk '{print $3}'`
     if [ "$u" != "$uid" ]; then
@@ -126,7 +118,24 @@ if [ "$diffFound" -o "$force" ]; then
     fi
 fi
 
-# check rootDir ownership and permissions
+# setup and make changes to a dummy dir so we can compare to the rootDir
+# the tmpDir must be on a volume/dataset that permits setting of ACLs
+testDir=${rootDir%/*}/tmp_aclDir_$$
+
+cleanup () {     # make sure we cleanup
+    [ "$DEBUG" ] || rm -f  "${aclFile}.*"
+    [ "$DEBUG" ] || rm -rf "${testDir}"
+}
+trap cleanup 0 SIGHUP SIGINT SIGQUIT SIGTERM
+
+mkdir "$testDir"
+
+# set basic ownership and perms on testDir
+[ "$uid" ]   && chown $uid   "$testDir"
+[ "$gid" ]   && chgrp $gid   "$testDir"
+[ "$perms" ] && chmod $perms "$testDir"
+
+# compare permissions of rootDir to testDir
 if [ "$perms" ]; then
     p1=`ls -ld "$rootDir" | awk '{print $1}' | sed 's/\+$//'`
     p2=`ls -ld "$testDir" | awk '{print $1}' | sed 's/\+$//'`
@@ -210,8 +219,7 @@ elif [ "$LOCAL_ACL" = "NFSv4" ]; then
     fi
 fi
 
-[ "$DEBUG" ] || rm -f  "${aclFile}.*"
-[ "$DEBUG" ] || rm -rf "${testDir}"
+cleanup
 [ "$DEBUG" ] && echo "        -------------- out $0 ----------------"
 [ "$DEBUG" ] && echo
 exit 0
