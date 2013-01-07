@@ -26,9 +26,9 @@ LAST_MODIFIED_DATE='2012-10-05'
 ###############################################################################
 printFullUsage() {
     echo "###############################################################################"
-    echo "# backupGT for servers"
+    echo "# setfacl_recursively.sh"
     echo "# Author: Garry Thuna"
-    echo "# Created: 2012-02-05"
+    echo "# Created: 2012-12-23"
     echo "# Last modified: ${LAST_MODIFIED_DATE}"
     echo "###############################################################################"
     echo "Set the acls recursively on all the contents of the rootDir.  As a speedup"

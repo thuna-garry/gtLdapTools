@@ -22,7 +22,7 @@ modifiedBy="Garry Thuna"
 ##################################################################################
 # parse command line options
 ##################################################################################
-usage = "usage: %prog [options] [uid1 [[uid2] [[...]]]" 
+usage = "usage: %prog [options]" 
 description = "Checks local server for workspaces that have either gtwsPurgeHours" +\
               " set and/or have recycle bins.  Search these directories for files" +\
               " that are older than the amount set by these attributes.  Removal is" +\
@@ -54,7 +54,7 @@ def getChildrenRelativePaths(con, parentDN):
 def scrubDir(path, maxAge, minDepth, childrenRelativePaths):
     nowTime = time.time()                            # time the search starts
     baseDepth = path.count(os.path.sep)
-
+    print "xxx", path
     for curPath, dirs, files in os.walk(path):
         if options.verbose:
             print "scrubbing:  ", curPath
@@ -84,11 +84,86 @@ def scrubDir(path, maxAge, minDepth, childrenRelativePaths):
         # see if the directory is empty (this is a lazy directory cleanup as 
         # empty ancestors don't get deleted until the next rerun of this script)
         if (len(dirs) + len(files) == 0) and (curDepth - baseDepth >= minDepth):
+
             if options.verbose:
                 print "    directory is now empty... deleting "
             os.rmdir(curPath)
 
              
+#def scrubRecycleBin(path, recycleBinDays):
+#    # When files are deleted through samba it appears as though they are actually
+#    # moved into the recycleBin (and renamed if necessary to avoid collistion). As
+#    # such the files modification timestamp will not be updated to show the time of
+#    # deletion but will retain the pre-deleted timestamp.  As we only want to purge
+#    # files that have existed in the recycleBin in excess of a given time we mark
+#    # the arrival of each file by creating a symlink to it.  The modification time
+#    #   of the symlink can then be used to age the file.
+#    script = '''#! /bin/sh
+#        rDir="{rDir}"
+#        maxDays={maxDays}
+#        VERBOSE={verbose}
+#        mkdir -p $rDir/.ageLinks  2>/dev/null
+#    
+#        # attempt to create a symlink for each file
+#        [ "$VERBOSE" -gt 0 ] && echo "    aging contents of $rDir"
+#        find $rDir -type f | while read fname; do
+#            case {localOS} in
+#                bsd) 
+#                    ln -s "$fname" $rDir/.ageLinks/`echo $fname | sha1` 2>/dev/null
+#                    ;;
+#                linux)
+#                    ln -s "$fname" $rDir/.ageLinks/`echo $fname | sha1sum | cut -d ' ' -f 1` 2>/dev/null
+#                    ;;
+#            esac
+#        done
+#
+#        # delete the file pointed to by any symlink that is too old
+#        [ "$VERBOSE" -gt 0 ] && echo "    deleting old files"
+#        find $rDir/.ageLinks -type l -mtime +${maxDays} | while read fname; do
+#            refName="`readlink $fname`"
+#            [ "$VERBOSE" -gt 0 ] && echo "        $refName"
+#            rm -f "$refName"
+#            rm -f $fname
+#        done
+#    
+#        # delete any empty directories including the rDir itself
+#        find -d $rDir -type d -empty -delete
+#
+#    '''.format(localOS=LOCAL_OS
+#             , rDir=path,
+#             , maxDays=recycleBinDays
+#             , verbose=int(options.verbose)
+#            )
+#    fd, fname = tempfile.mkstemp()
+#    try:
+#        with open(fname, 'w') as f:
+#            f.write(script)
+#        cmd = [ '/bin/sh', fname ]
+#        if options.verbose: 
+#            print 'scrubbing ' + path
+#            p = subprocess.Popen(cmd); p.wait()
+#        else:
+#            with open('/dev/null', 'w') as f:
+#                p = subprocess.Popen(cmd, stdout=f); p.wait()
+#    finally:
+#        os.unlink(fname)
+
+
+def scrubRecycleBin(path, recycleBinDays):
+    cmd1 = [ 'find', path, '-d', '-type', 'f', '-mtime', '+{0}'.format(recycleBinDays), '-print', '-delete' ]
+    cmd2 = [ 'find', path, '-d', '-empty', '-print', '-delete' ]
+        if options.verbose: 
+            print 'scrubbing ' + path
+            p = subprocess.Popen(cmd1); p.wait()
+            p = subprocess.Popen(cmd2); p.wait()
+        else:
+            with open('/dev/null', 'w') as f:
+                p = subprocess.Popen(cmd1, stdout=f); p.wait()
+                p = subprocess.Popen(cmd2, stdout=f); p.wait()
+    finally:
+        os.unlink(fname)
+
+
 ##################################################################################
 # main
 ##################################################################################
@@ -98,40 +173,6 @@ if BIND_TLS:
     con.start_tls_s()
 con.simple_bind_s(BIND_DN, BIND_PW)
 
-#--------------
-#- workspaces
-#--------------
-# get all workspaces on this server that have any of the following defined
-#   gtwsPurgeHours  gtwsRecycleBinDays
-baseDN = BASE_DN_SERVER
-filter = '(&(objectClass=gtWorkspace)(|(gtwsPurgeHours=*)(gtwsRecycleBinDays=*)))'
-attrs  = [ 'gtwsName', 'gtwsRecycleBinDays', 'gtwsPurgeHours', 'gtwsPurgeMinDepth' ]
-workspaces = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
-
-# for each workspace determine what needs to be cleaned up
-for ws in workspaces:
-    dn, attrs = ws
-    path = os.path.join(SAMBA_WORKSPACE, SERVER_SHORT_NAME, getWorkspaceRelativePath(con, ws))
-
-    if 'gtwsPurgeHours' in attrs:
-        maxAge = int(attrs['gtwsPurgeHours'][0]) * 3600  # max age in seconds
-
-        # calculate the working depth from the supplied gtwsPurgeMinDepth
-        minDepth = 1
-        if 'gtwsPurgeMinDepth' in attrs:
-            minDepth = int(attrs['gtwsPurgeMinDepth'][0])
-
-        # exclude directories of child workspaces
-        childrenRelativePaths = getChildrenRelativePaths(con, dn)
-
-        # do it
-        scrubDir(path, maxAge, minDepth, childrenRelativePaths)
-
-    if 'gtwsRecycleBinDays' in attrs:
-        path = os.path.join(path, SAMBA_RECYCLE_DIR)
-        maxAge = int(attrs['gtwsRecycleBinDays'][0]) * 24 * 3600   # max age in seconds
-        scrubDir(path, maxAge, 0, [])
-
 
 #--------------
 #- workspaces
@@ -166,10 +207,24 @@ for ws in workspaces:
         path = os.path.join(path, SAMBA_RECYCLE_DIR)
         maxAge = int(attrs['gtwsRecycleBinDays'][0]) * 24 * 3600   # max age in seconds
         scrubDir(path, maxAge, 0, [])
+        scrubRecycleBin(path, maxAge):        
 
 
-#--------------
-# close the connection
-#--------------
+# cleanup
 con.unbind_s()
+
+
+#--------------
+#- homes
+#--------------
+curPath, dirs, files in os.walk(SAMBA_HOME)
+for userDir in dirs:
+   rDir = os.path.join(curPath
+                      ,userDir
+                      ,SAMBA_USER_HOME
+                      ,SAMBA_RECYCLE_DIR )
+   #todo: parameterize duration
+   scrubRecycleBin(rDir, 5):        
+
+
 
