@@ -168,7 +168,7 @@ for ws in workspaces:
     # build and apply the ACLs
     if 'gtwsACL' in attrs:
         # for the wsDir: assemble the acls in a temp file
-        fd, fname = tempfile.mkstemp()
+        fd, fname = tempfile.mkstemp(prefix="mkws.",suffix=".tmp")
         try:
             didMemberfull = False
             with open(fname, 'w') as f:

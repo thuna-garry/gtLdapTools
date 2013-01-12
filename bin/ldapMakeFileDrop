@@ -122,7 +122,7 @@ for ws in workspaces:
         setOwnerGroupPerms(userDir, uid, uid, 02770)
 
         # assemble the acls in a tempFile
-        fd, fname = tempfile.mkstemp(prefix='aclFile_', suffix='.tmp')
+        fd, fname = tempfile.mkstemp(prefix='mkfd.', suffix='.tmp')
         try:
             if options.verbose: 
                 print '    writing acls to a temp file ' 

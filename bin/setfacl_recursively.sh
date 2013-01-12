@@ -89,7 +89,7 @@ rootDir="$2"      # $2 the root directory to which the ACL is to be applied
 
 
 ###############################################################################
-# 
+# main
 ###############################################################################
 [ "$DEBUG" ] && echo "        --------------- in $0 ----------------"
 [ "$DEBUG" ] && echo "        aclFile=$1"
@@ -123,8 +123,9 @@ fi
 testDir=${rootDir%/*}/tmp_aclDir_$$
 
 cleanup () {     # make sure we cleanup
-    [ "$DEBUG" ] || rm -f  "${aclFile}.*"
-    [ "$DEBUG" ] || rm -rf "${testDir}"
+    [ "$DEBUG" ] && echo "debug: skipping clean up"
+    [ "$DEBUG" ] || rm -f  ${aclFile}.*
+    [ "$DEBUG" ] || rm -rf ${testDir}
 }
 trap cleanup 0 SIGHUP SIGINT SIGQUIT SIGTERM
 
