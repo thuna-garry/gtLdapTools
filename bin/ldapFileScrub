@@ -32,6 +32,8 @@ description = "Checks local server for workspaces that have either gtwsPurgeHour
 parser = OptionParser(usage=usage, version=version, description=description)
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
                         help="show changes made to file system [default: %default]")
+parser.add_option("-d", "--dry-run", action="store_true", dest="dryRun", default=False,
+                        help="run but don't actually delete anything [default: %default]")
 (options, args) = parser.parse_args()
 
 
@@ -54,15 +56,14 @@ def getChildrenRelativePaths(con, parentDN):
 def scrubDir(path, maxAge, minDepth, childrenRelativePaths):
     nowTime = time.time()                            # time the search starts
     baseDepth = path.count(os.path.sep)
-    print "xxx", path
     for curPath, dirs, files in os.walk(path):
         if options.verbose:
-            print "scrubbing:  ", curPath
+            print "\n\nscrubbing:  ", curPath;  sys.stdout.flush()
         curDepth = curPath.count(os.path.sep)
         if curDepth == baseDepth:                # at base of search
             for child in childrenRelativePaths:
                 if options.verbose:
-                    print "    skipping subworkspac:  ", child
+                    print "    skipping sub-workspace:  ", child;  sys.stdout.flush()
                 dirs.remove(child)               # skip child workspaces
 
         # honor gtwsPurgeMinDepth (we add one to the curDepth because on each
@@ -77,91 +78,34 @@ def scrubDir(path, maxAge, minDepth, childrenRelativePaths):
             age = (nowTime - ff_time)
             if age > maxAge:
                 if options.verbose:
-                    print "    deleting file: ", ff
-                os.unlink(ff)
+                    print "    deleting file: ", ff;  sys.stdout.flush()
+                if not options.dryRun:
+                    os.unlink(ff)
                 files.remove(f)
 
         # see if the directory is empty (this is a lazy directory cleanup as 
         # empty ancestors don't get deleted until the next rerun of this script)
         if (len(dirs) + len(files) == 0) and (curDepth - baseDepth >= minDepth):
-
             if options.verbose:
-                print "    directory is now empty... deleting "
-            os.rmdir(curPath)
-
+                print "    directory is now empty... deleting ";  sys.stdout.flush()
+            if not options.dryRun:
+                os.rmdir(curPath)
              
-#def scrubRecycleBin(path, recycleBinDays):
-#    # When files are deleted through samba it appears as though they are actually
-#    # moved into the recycleBin (and renamed if necessary to avoid collistion). As
-#    # such the files modification timestamp will not be updated to show the time of
-#    # deletion but will retain the pre-deleted timestamp.  As we only want to purge
-#    # files that have existed in the recycleBin in excess of a given time we mark
-#    # the arrival of each file by creating a symlink to it.  The modification time
-#    #   of the symlink can then be used to age the file.
-#    script = '''#! /bin/sh
-#        rDir="{rDir}"
-#        maxDays={maxDays}
-#        VERBOSE={verbose}
-#        mkdir -p $rDir/.ageLinks  2>/dev/null
-#    
-#        # attempt to create a symlink for each file
-#        [ "$VERBOSE" -gt 0 ] && echo "    aging contents of $rDir"
-#        find $rDir -type f | while read fname; do
-#            case {localOS} in
-#                bsd) 
-#                    ln -s "$fname" $rDir/.ageLinks/`echo $fname | sha1` 2>/dev/null
-#                    ;;
-#                linux)
-#                    ln -s "$fname" $rDir/.ageLinks/`echo $fname | sha1sum | cut -d ' ' -f 1` 2>/dev/null
-#                    ;;
-#            esac
-#        done
-#
-#        # delete the file pointed to by any symlink that is too old
-#        [ "$VERBOSE" -gt 0 ] && echo "    deleting old files"
-#        find $rDir/.ageLinks -type l -mtime +${maxDays} | while read fname; do
-#            refName="`readlink $fname`"
-#            [ "$VERBOSE" -gt 0 ] && echo "        $refName"
-#            rm -f "$refName"
-#            rm -f $fname
-#        done
-#    
-#        # delete any empty directories including the rDir itself
-#        find -d $rDir -type d -empty -delete
-#
-#    '''.format(localOS=LOCAL_OS
-#             , rDir=path,
-#             , maxDays=recycleBinDays
-#             , verbose=int(options.verbose)
-#            )
-#    fd, fname = tempfile.mkstemp()
-#    try:
-#        with open(fname, 'w') as f:
-#            f.write(script)
-#        cmd = [ '/bin/sh', fname ]
-#        if options.verbose: 
-#            print 'scrubbing ' + path
-#            p = subprocess.Popen(cmd); p.wait()
-#        else:
-#            with open('/dev/null', 'w') as f:
-#                p = subprocess.Popen(cmd, stdout=f); p.wait()
-#    finally:
-#        os.unlink(fname)
-
 
 def scrubRecycleBin(path, recycleBinDays):
-    cmd1 = [ 'find', path, '-d', '-type', 'f', '-mtime', '+{0}'.format(recycleBinDays), '-print', '-delete' ]
-    cmd2 = [ 'find', path, '-d', '-empty', '-print', '-delete' ]
-        if options.verbose: 
-            print 'scrubbing ' + path
-            p = subprocess.Popen(cmd1); p.wait()
-            p = subprocess.Popen(cmd2); p.wait()
-        else:
-            with open('/dev/null', 'w') as f:
-                p = subprocess.Popen(cmd1, stdout=f); p.wait()
-                p = subprocess.Popen(cmd2, stdout=f); p.wait()
-    finally:
-        os.unlink(fname)
+    cmd1 = [ 'find', path, '-d', '-type', 'f', '-mtime', '+{0}'.format(recycleBinDays), '-print' ]
+    cmd2 = [ 'find', path, '-d', '-empty', '-print' ]
+    if not options.dryRun:
+        cmd1 += [ '-delete' ]
+        cmd2 += [ '-delete' ]
+    if options.verbose: 
+        print '\n\nscrubbing ' + path;          sys.stdout.flush()
+        p = subprocess.Popen(cmd1 ); p.wait();  sys.stdout.flush()
+        p = subprocess.Popen(cmd2 ); p.wait();  sys.stdout.flush()
+    else:
+        with open('/dev/null', 'w') as f:
+            p = subprocess.Popen(cmd1, stdout=f, stderr=f); p.wait();  sys.stdout.flush()
+            p = subprocess.Popen(cmd2, stdout=f, stderr=f); p.wait();  sys.stdout.flush()
 
 
 ##################################################################################
@@ -174,9 +118,10 @@ if BIND_TLS:
 con.simple_bind_s(BIND_DN, BIND_PW)
 
 
-#--------------
-#- workspaces
-#--------------
+if options.verbose: 
+    print "------------------------------------------------------------------";  sys.stdout.flush()
+    print "- scrubbing workspaces                                            ";  sys.stdout.flush()
+    print "------------------------------------------------------------------";  sys.stdout.flush()
 # get all workspaces on this server that have any of the following defined
 #   gtwsPurgeHours  gtwsRecycleBinDays
 baseDN = BASE_DN_SERVER
@@ -206,25 +151,28 @@ for ws in workspaces:
     if 'gtwsRecycleBinDays' in attrs:
         path = os.path.join(path, SAMBA_RECYCLE_DIR)
         maxAge = int(attrs['gtwsRecycleBinDays'][0]) * 24 * 3600   # max age in seconds
-        scrubDir(path, maxAge, 0, [])
-        scrubRecycleBin(path, maxAge):        
+        if os.path.isdir(path):
+            scrubRecycleBin(path, maxAge)        
 
 
 # cleanup
 con.unbind_s()
 
 
-#--------------
-#- homes
-#--------------
-curPath, dirs, files in os.walk(SAMBA_HOME)
-for userDir in dirs:
-   rDir = os.path.join(curPath
-                      ,userDir
-                      ,SAMBA_USER_HOME
-                      ,SAMBA_RECYCLE_DIR )
-   #todo: parameterize duration
-   scrubRecycleBin(rDir, 5):        
+if options.verbose: 
+    print "------------------------------------------------------------------";  sys.stdout.flush()
+    print "- scrubbing homes                                                 ";  sys.stdout.flush()
+    print "------------------------------------------------------------------";  sys.stdout.flush()
+for curPath, dirs, files in os.walk(SAMBA_HOME):
+    for userDir in sorted(dirs) :
+       rDir = os.path.join(curPath
+                          ,userDir
+                          ,SAMBA_USER_HOME
+                          ,SAMBA_RECYCLE_DIR )
+       if os.path.isdir(rDir):
+           #todo: parameterize duration
+           scrubRecycleBin(rDir, 5)        
+    break
 
 
 
