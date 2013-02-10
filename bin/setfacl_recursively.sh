@@ -120,7 +120,7 @@ fi
 
 # setup and make changes to a dummy dir so we can compare to the rootDir
 # the tmpDir must be on a volume/dataset that permits setting of ACLs
-testDir=${rootDir%/*}/tmp_aclDir_$$
+testDir=${rootDir%/*}/.tmp_aclDir_$$
 
 cleanup () {     # make sure we cleanup
     [ "$DEBUG" ] && echo "debug: skipping clean up"
