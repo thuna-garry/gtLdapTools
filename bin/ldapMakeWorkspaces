@@ -208,6 +208,8 @@ for ws in workspaces:
                     fname, wsDir ]
             if options.force:
                 cmd.insert(1, '-f')
+            if options.verbose:
+                cmd.insert(1, '-v')
     
             # apply them
             if options.verbose: 
