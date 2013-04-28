@@ -38,10 +38,10 @@ parser.add_option("-s", "--server", action="store", type="string", dest="server"
 #     do the preliminary procssing of users and groups
 #     do the preliminary procssing of workspaces
 ####################################################################################
-con = ldap.initialize(BIND_URI)
+con = ldap.initialize(BIND_URI_SERVER)
 if BIND_TLS:
     con.start_tls_s()
-con.simple_bind_s(BIND_DN, BIND_PW)
+con.simple_bind_s(BIND_DN_SERVER, BIND_PW_SERVER)
 
 groups,                \
     users,             \
@@ -84,7 +84,7 @@ for ws in workspaces:
        continue
 
     # skip if not for command line requested server
-    if options.server and getDNattr(dn, 'gtsName').lower() != options.server.lower():
+    if options.server and getDNattr(dn, 'gtName').lower() != options.server.lower():
        continue
 
     print getQualGtwsName(ws), gtwsName2path[getQualGtwsName(ws)]

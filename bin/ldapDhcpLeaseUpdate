@@ -5,23 +5,22 @@ import os
 import ldap
 import subprocess
 from optparse import OptionParser
-import tempfile
 
 sys.path.append(os.path.realpath(os.path.join(__file__, '..', '..', 'conf')))
 from ldapConf import *
 from ldapUtil import *
 
 
-####################################################################################
+################################################################################
 # global constants
-####################################################################################
+################################################################################
 version="%prog: 2012-03-28"
 modifiedBy="Garry Thuna"
 
 
-####################################################################################
+################################################################################
 # the ldap queries
-####################################################################################
+################################################################################
 def queryLeases(con):
     baseDN = "ou=computers," + BASE_DN
     filter = '(objectClass=gtInterfaceDhcp)'
@@ -30,23 +29,24 @@ def queryLeases(con):
     return qr
 
 
-###################################################################################
+################################################################################
 # parse command line options
-###################################################################################
+################################################################################
 usage = "usage: %prog [options]" 
-description = "Update gtInterfaceDhcp objects with data from dhcp server's leases"
+description = "Update gtInterfaceDhcp objects with data from a dhcp server's leases"
 parser = OptionParser(usage=usage, version=version, description=description)
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
                         help="show processing details [default: %default]")
 (options, args) = parser.parse_args()
 
 
-####################################################################################
+################################################################################
 # get the current leases (should be extracted from the dhcpd server) 
-####################################################################################
+################################################################################
 leases = {}
 for line in sys.stdin:
     mac, ip, starts, ends = line.split()
+    mac = mac.lower()
     leases[mac] = [ ip, starts, ends ]
     if options.verbose:
         print "dhcp lease:  ", mac, ip, starts, ends 
@@ -64,11 +64,11 @@ for line in sys.stdin:
 #        sys.stdout.flush()
 
 
-####################################################################################
+################################################################################
 # bind to the ldap server 
 #     run the queries
-####################################################################################
-con = ldap.initialize(BIND_URI)
+################################################################################
+con = ldap.initialize(BIND_URI_MASTER)
 if BIND_TLS:
     con.start_tls_s()
 con.simple_bind_s(BIND_DN_DNS_DHCP, BIND_PW_DNS_DHCP)
@@ -78,15 +78,17 @@ for rec in qLeases:
     dn, attrs = rec
     recMac, recIp      = attrs['gtMacAddress'][0],  attrs['gtIpv4Address'][0]
     recStarts, recEnds = attrs['gtLeaseStarts'][0], attrs['gtLeaseEnds'][0]
+    recMac = recMac.lower()
     if options.verbose:
         print "ldap lease:  ", recMac, recIp, recStarts, recEnds 
     try:
         ip, starts, ends = leases[ recMac ]
         if (recIp, recStarts, recEnds) != (ip, starts, ends):
             if options.verbose:
-                print "    updating:", mac, ip, starts, ends 
+                print "    updating:", recMac, ip, starts, ends 
             # setup the modifications to the record's entry
             mr = []
+            mr.append( (ldap.MOD_REPLACE, 'gtMacAddress',  [ recMac ]) )
             mr.append( (ldap.MOD_REPLACE, 'gtIpv4Address', [ ip     ]) )
             mr.append( (ldap.MOD_REPLACE, 'gtLeaseStarts', [ starts ]) )
             mr.append( (ldap.MOD_REPLACE, 'gtLeaseEnds',   [ ends   ]) )

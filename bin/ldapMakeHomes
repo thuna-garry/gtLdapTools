@@ -40,10 +40,10 @@ parser.add_option("-f", "--force-perms", action="store_true", dest="force", defa
 #     do the preliminary procssing of users and groups
 #     do the preliminary procssing of workspaces
 ##################################################################################
-con = ldap.initialize(BIND_URI)
+con = ldap.initialize(BIND_URI_SERVER)
 if BIND_TLS:
     con.start_tls_s()
-con.simple_bind_s(BIND_DN, BIND_PW)
+con.simple_bind_s(BIND_DN_SERVER, BIND_PW_SERVER)
 
 groups,                \
     users,             \
@@ -145,7 +145,7 @@ for u in users:
     linkFiles = list()
     for gtwsName, gtsName, path in accessibles:
         serverAttrs = gtsName2server[gtsName][1]
-        serverDir = os.path.join(userDir, serverAttrs['gtsNickname'][0])
+        serverDir = os.path.join(userDir, serverAttrs['gtDisplayName'][0])
         if not os.path.exists(serverDir):
             os.mkdir(serverDir)
         if options.verbose: 
@@ -159,7 +159,7 @@ for u in users:
             print '    writing link file: ' + linkFile
         with open(linkFile, 'w') as f:
             f.write("[InternetShortcut]" + "\r\n")
-            f.write("URL=file://" + serverAttrs['gtsFQDN'][0] + "/" + wsAttr['gtwsName'][0] + "\r\n")
+            f.write("URL=file://" + serverAttrs['gtFQDN'][0] + "/" + wsAttr['gtwsName'][0] + "\r\n")
         setOwnerGroupPerms(linkFile, uid, MEMBERLESS_GID, 00400)
         linkFiles.append(linkFile)
 

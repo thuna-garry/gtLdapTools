@@ -1,0 +1,116 @@
+#! /usr/local/bin/python
+
+import sys
+import os
+import ldap
+import subprocess
+from optparse import OptionParser
+from datetime import datetime
+from pytz import timezone
+
+sys.path.append(os.path.realpath(os.path.join(__file__, '..', '..', 'conf')))
+from ldapConf import *
+from ldapUtil import *
+
+
+################################################################################
+# global constants
+################################################################################
+version="%prog: 2013-04-19"
+modifiedBy="Garry Thuna"
+
+
+################################################################################
+# the ldap queries
+################################################################################
+def queryDevice(con):
+    baseDN = BASE_DN
+    filter = '(&(objectClass=gtDevice)(gtFQDN=*))'
+    attrs  = [ 'gtName', 'gtFQDN', 'gtAuxDnsEntry' ]
+    qr = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
+    return qr
+
+def queryInterface(con, baseDN):
+    filter = '(objectClass=gtInterface)'
+    attrs  = [ 'objectClass', 'gtInterfaceName', 'gtIpv4Address',
+               'gtLeaseStarts', 'gtLeaseEnds', 'gtFQDN' ]
+    qr = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
+    return qr
+
+
+################################################################################
+# parse command line options
+################################################################################
+usage = "usage: %prog [options]" 
+description = "Extract DNS information from the DIT and create TinyDNS style output"
+parser = OptionParser(usage=usage, version=version, description=description)
+parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
+                        help="show processing details [default: %default]")
+(options, args) = parser.parse_args()
+
+
+################################################################################
+# bind to the ldap server 
+#     run the queries
+################################################################################
+con = ldap.initialize(BIND_URI_SERVER)
+if BIND_TLS:
+    con.start_tls_s()
+con.simple_bind_s(BIND_DN_DNS_DHCP, BIND_PW_DNS_DHCP)
+
+qr = queryDevice(con)
+qDevices = sorted( qr, key=lambda r: ','.join(r[0].split(',')[::-1]).lower() )
+for host in qDevices:
+    hostDN, hostAttrs = host
+    gtFQDN, gtName  = hostAttrs['gtFQDN'][0], hostAttrs['gtName'][0]
+
+    qInterfaces = queryInterface(con, hostDN)
+    if2ip = {}
+    for iface in qInterfaces:
+        ifDN, ifAttrs = iface
+        gtInterfaceName  = ifAttrs['gtInterfaceName'][0]
+
+        if 'gtIpv4Address' in ifAttrs:
+            gtIpv4Address = ifAttrs['gtIpv4Address'][0]
+        else:
+            continue  # no gtIpv4Address address defined
+
+        if 'gtInterfaceDhcp' in ifAttrs['objectClass']:
+            ifType = 'dhcp'
+            ifLeaseStarts, ifLeaseEnds = ifAttrs['gtLeaseStarts'][0], ifAttrs['gtLeaseEnds'][0]
+            curTime = datetime.now(timezone('UTC')).strftime("%Y%m%d%H%M%S")           
+            if not (ifLeaseStarts <= curTime and curTime < ifLeaseEnds):
+                continue  # lease is not current
+        else:
+            ifType = 'static'
+
+        if 'gtFQDN' in ifAttrs:   # interface locally defines FQDN overriding host FQDN
+            useFQDN = ifAttrs['gtFQDN'][0]
+        else:
+            useFQDN = gtFQDN
+
+        entry = '={fqdn}:{ipAddr}'.format(fqdn   = useFQDN,
+                                          ipAddr = gtIpv4Address)
+        print entry
+        if2ip[ gtInterfaceName ] = gtIpv4Address
+
+    if 'gtAuxDnsEntry' in hostAttrs.keys():
+        for ae in hostAttrs['gtAuxDnsEntry']:
+            if ae.find('view=') >= 0:
+               views, entry = ae.strip().split(' ')
+               views = views[5:].split(',')
+               if len([x for x in views if x in LOCAL_DNS_VIEWS]) == 0:
+                   continue
+            else:
+                entry = ae
+
+            try:
+                entry = entry.format(**if2ip)
+            except: 
+                print >> sys.stderr, '  *** Error host {0} has a gtAuxDnsEntry with replacable interface which was not found'.format(hostDN)
+                print >> sys.stderr, '      {0}'.format(ae)
+                continue
+            print entry
+
+con.unbind_s()
+

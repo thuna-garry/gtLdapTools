@@ -112,10 +112,10 @@ def scrubRecycleBin(path, recycleBinDays):
 # main
 ##################################################################################
 # bind to the ldap server 
-con = ldap.initialize(BIND_URI)
+con = ldap.initialize(BIND_URI_SERVER)
 if BIND_TLS:
     con.start_tls_s()
-con.simple_bind_s(BIND_DN, BIND_PW)
+con.simple_bind_s(BIND_DN_SERVER, BIND_PW_SERVER)
 
 
 if options.verbose: 

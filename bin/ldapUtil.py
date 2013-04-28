@@ -22,6 +22,7 @@ modifiedBy="Garry Thuna"
 # utility:  exract a specific attribute value from a DN
 ###################################################################################
 def getDNattr(dn, attr):
+    dn = dn.replace('gtsName', 'gtName')  #conversion for old gtServer schema
     pieces = [ a for a in dn.split(',') if a.find(attr) > -1 ]
     if len(pieces):
         return pieces[0].split('=')[1]
@@ -63,12 +64,12 @@ def setOwnerGroupPerms(path, owner, group, perms, applyTo=""):
 
 
 ###################################################################################
-# utility:  derive the qualified gtWorkspaceName <gtsName>/<gtwsName>
+# utility:  derive the qualified gtWorkspaceName <gtName>/<gtwsName>
 #           rec must be of objectClass=gtWorkspace
 ###################################################################################
 def getQualGtwsName(gtwsRec):
     dn, attrs = gtwsRec
-    return getDNattr(dn, 'gtsName') + ':' +  attrs['gtwsName'][0] 
+    return getDNattr(dn, 'gtName') + ':' +  attrs['gtwsName'][0] 
 
 
 ###################################################################################
@@ -157,7 +158,7 @@ def queryWorkspace(con):
 def queryServer(con):
     baseDN = BASE_DN
     filter = '(objectClass=gtServer)'
-    attrs  = [ 'gtsName', 'gtsFQDN', 'gtsNickname' ]
+    attrs  = [ 'gtName', 'gtFQDN', 'gtNickname' ]
     qr = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
     return qr
 
@@ -317,7 +318,7 @@ def preProcessLdapObjects(con):
     # build a gtsName to server mapping
     gtsName2server = dict()
     for s in servers:
-        gtsName2server[ s[1]['gtsName'][0] ] = s
+        gtsName2server[ s[1]['gtName'][0] ] = s
 
 
     ###############################################################################
@@ -343,10 +344,10 @@ def main():
     #     do the preliminary procssing of users and groups
     #     do the preliminary procssing of workspaces
     ###############################################################################
-    con = ldap.initialize(BIND_URI)
+    con = ldap.initialize(BIND_URI_SERVER)
     if BIND_TLS:
         con.start_tls_s()
-    con.simple_bind_s(BIND_DN, BIND_PW)
+    con.simple_bind_s(BIND_DN_SERVER, BIND_PW_SERVER)
 
     groups,                \
         users,             \

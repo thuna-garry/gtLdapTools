@@ -52,10 +52,10 @@ parser.add_option("-v", "--verbose", action="store_true", dest="verbose", defaul
 # bind to the ldap server 
 #     run the queries
 ####################################################################################
-con = ldap.initialize(BIND_URI)
+con = ldap.initialize(BIND_URI_SERVER)
 if BIND_TLS:
     con.start_tls_s()
-con.simple_bind_s(BIND_DN, BIND_PW)
+con.simple_bind_s(BIND_DN_SERVER, BIND_PW_SERVER)
 qSsh = querySshAccess(con)
 qPkHolder = querySshPubKeyHolder(con)
 con.unbind_s()
@@ -66,7 +66,7 @@ con.unbind_s()
 ####################################################################################
 hostAccounts = {}   # hostaccountName: [(option, pubKey)]
 for r in qSsh:
-    print "server: " + getDNattr(r[0], 'gtsName') + "   account: " + getDNattr(r[0], 'ssh')
+    print "server: " + getDNattr(r[0], 'gtName') + "   account: " + getDNattr(r[0], 'ssh')
     uid = r[1]['sshHostAccountName'][0]
     keylist = hostAccounts.get(uid, [])
 
