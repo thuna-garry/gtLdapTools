@@ -158,7 +158,7 @@ def queryWorkspace(con):
 def queryServer(con):
     baseDN = BASE_DN
     filter = '(objectClass=gtServer)'
-    attrs  = [ 'gtName', 'gtFQDN', 'gtNickname' ]
+    attrs  = [ 'gtName', 'gtFQDN', 'gtDisplayName' ]
     qr = con.search_s( baseDN, ldap.SCOPE_SUBTREE, filter, attrs )
     return qr
 
