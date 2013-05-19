@@ -3,14 +3,19 @@
 PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 export PATH
 
+
 ##################################################################
 # periodically run this from cron (say every 15 min) to have ldap
 # changes propagate to the local sambaFiles deployment
 ##################################################################
-# modified on: 2012-01-14
+# modified on: 2013-05-19
 # modified by: Garry Thuna
 ##################################################################
 gtToolDir=${0%/*}/..
+
+eval "`$gtToolDir/conf/ldapConf.py \
+        LOCAL_OS    \
+     `"
 
 echo
 echo "========================================================================="
@@ -36,5 +41,8 @@ echo;echo
 echo "========================================================================="
 echo "= reload samba                                                          ="
 echo "========================================================================="
-service samba reload
+case $LOCAL_OS in
+    bsd)   service samba reload;;
+    linux) service smb   reload;;
+esac
 
