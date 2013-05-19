@@ -50,6 +50,7 @@ sed -i -e 's/awsName=/gtwsName=/g'                 $tmpFile
 ##########################################################
 # avmaxGroup -> globalBotanical
 ##########################################################
+#sed -i -e 's/avmaxgroup/globalBotanical/g'         $tmpFile
 #sed -i -e 's/avmaxGroup/globalBotanical/g'         $tmpFile
 #sed -i -e 's/AVMAXGROUP/globalBotanical/g'         $tmpFile
 
