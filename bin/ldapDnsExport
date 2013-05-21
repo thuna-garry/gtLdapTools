@@ -63,16 +63,22 @@ qDevices = sorted( qr, key=lambda r: ','.join(r[0].split(',')[::-1]).lower() )
 for host in qDevices:
     hostDN, hostAttrs = host
     gtFQDN, gtName  = hostAttrs['gtFQDN'][0], hostAttrs['gtName'][0]
+    if options.verbose:
+        print "\n---- {0:-<55s}".format(gtName + " / " + gtFQDN + " ")
 
     qInterfaces = queryInterface(con, hostDN)
     if2ip = {}
     for iface in qInterfaces:
         ifDN, ifAttrs = iface
         gtInterfaceName  = ifAttrs['gtInterfaceName'][0]
+        if options.verbose:
+            print "{0} / {1}".format(gtInterfaceName, ifDN)
 
         if 'gtIpv4Address' in ifAttrs:
             gtIpv4Address = ifAttrs['gtIpv4Address'][0]
         else:
+            if options.verbose:
+                print "    no gtIpv4Address"
             continue  # no gtIpv4Address address defined
 
         if 'gtInterfaceDhcp' in ifAttrs['objectClass']:
@@ -80,6 +86,8 @@ for host in qDevices:
             ifLeaseStarts, ifLeaseEnds = ifAttrs['gtLeaseStarts'][0], ifAttrs['gtLeaseEnds'][0]
             curTime = datetime.now(timezone('UTC')).strftime("%Y%m%d%H%M%S")           
             if not (ifLeaseStarts <= curTime and curTime < ifLeaseEnds):
+                if options.verbose:
+                    print "    lease not current"
                 continue  # lease is not current
         else:
             ifType = 'static'
@@ -91,7 +99,10 @@ for host in qDevices:
 
         entry = '={fqdn}:{ipAddr}'.format(fqdn   = useFQDN,
                                           ipAddr = gtIpv4Address)
-        print entry
+	if options.verbose:
+            print "    {0}".format(entry)
+        else:
+            print entry
         if2ip[ gtInterfaceName ] = gtIpv4Address
 
     if 'gtAuxDnsEntry' in hostAttrs.keys():
