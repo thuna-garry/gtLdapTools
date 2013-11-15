@@ -53,7 +53,7 @@ def getChildrenRelativePaths(con, parentDN):
     return childrenRelativePaths
 
 
-def scrubDir(path, maxAge, minDepth, childrenRelativePaths):
+def scrubDir(path, maxAgeMin, minDepth, childrenRelativePaths):
     nowTime = time.time()                            # time the search starts
     baseDepth = path.count(os.path.sep)
     for curPath, dirs, files in os.walk(path):
@@ -76,7 +76,7 @@ def scrubDir(path, maxAge, minDepth, childrenRelativePaths):
             ff = os.path.join(curPath, f)
             ff_time = os.stat(ff).st_mtime
             age = (nowTime - ff_time)
-            if age > maxAge:
+            if age > maxAgeMin *60:
                 if options.verbose:
                     print "    deleting file: ", ff;  sys.stdout.flush()
                 if not options.dryRun:
@@ -92,16 +92,19 @@ def scrubDir(path, maxAge, minDepth, childrenRelativePaths):
                 os.rmdir(curPath)
              
 
-def scrubRecycleBin(path, recycleBinDays):
-    cmd1 = [ 'find', path, '-d', '-type', 'f', '-mtime', '+{0}'.format(recycleBinDays), '-print' ]
+def scrubRecycleBin(path, maxAgeMin):
+    if LOCAL_OS == 'linux':
+        cmd1 = [ 'find', path, '-d', '-type', 'f', '-mmin',  '+{0}'.format(maxAgeMin),  '-print' ]
+    else:
+        cmd1 = [ 'find', path, '-d', '-type', 'f', '-mtime', '+{0}m'.format(maxAgeMin), '-print' ]
     cmd2 = [ 'find', path, '-d', '-empty', '-print' ]
     if not options.dryRun:
         cmd1 += [ '-delete' ]
         cmd2 += [ '-delete' ]
     if options.verbose: 
-        print '\n\nscrubbing ' + path;          sys.stdout.flush()
-        p = subprocess.Popen(cmd1 ); p.wait();  sys.stdout.flush()
-        p = subprocess.Popen(cmd2 ); p.wait();  sys.stdout.flush()
+        print '\n\nscrubbing (maxAgeMin={} {}'.format(maxAgeMin, path); sys.stdout.flush()
+        p = subprocess.Popen(cmd1 ); p.wait();                          sys.stdout.flush()
+        p = subprocess.Popen(cmd2 ); p.wait();                          sys.stdout.flush()
     else:
         with open('/dev/null', 'w') as f:
             p = subprocess.Popen(cmd1, stdout=f, stderr=f); p.wait();  sys.stdout.flush()
@@ -135,7 +138,7 @@ for ws in workspaces:
     path = os.path.join(SAMBA_WORKSPACE, SERVER_SHORT_NAME, getWorkspaceRelativePath(con, ws))
 
     if 'gtwsPurgeHours' in attrs:
-        maxAge = int(attrs['gtwsPurgeHours'][0]) * 3600  # max age in seconds
+        maxAgeMin = int(attrs['gtwsPurgeHours'][0]) * 60  # max age in minutes
 
         # calculate the working depth from the supplied gtwsPurgeMinDepth
         minDepth = 1
@@ -146,13 +149,13 @@ for ws in workspaces:
         childrenRelativePaths = getChildrenRelativePaths(con, dn)
 
         # do it
-        scrubDir(path, maxAge, minDepth, childrenRelativePaths)
+        scrubDir(path, maxAgeMin, minDepth, childrenRelativePaths)
 
     if 'gtwsRecycleBinDays' in attrs:
         path = os.path.join(path, SAMBA_RECYCLE_DIR)
-        maxAge = int(attrs['gtwsRecycleBinDays'][0]) * 24 * 3600   # max age in seconds
+        maxAgeMin = int(attrs['gtwsRecycleBinDays'][0]) * 24 * 60   # max age in minutes
         if os.path.isdir(path):
-            scrubRecycleBin(path, maxAge)        
+            scrubRecycleBin(path, maxAgeMin)        
 
 
 # cleanup
@@ -171,7 +174,7 @@ for curPath, dirs, files in os.walk(SAMBA_HOME):
                           ,SAMBA_RECYCLE_DIR )
        if os.path.isdir(rDir):
            #todo: parameterize duration
-           scrubRecycleBin(rDir, 5)        
+           scrubRecycleBin(rDir, 5 * 24 *60)        
     break
 
 
