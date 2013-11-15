@@ -97,10 +97,10 @@ def scrubRecycleBin(path, maxAgeMin):
         cmd1 = [ 'find', path, '-d', '-type', 'f', '-mmin',  '+{0}'.format(maxAgeMin),  '-print' ]
     else:
         cmd1 = [ 'find', path, '-d', '-type', 'f', '-mtime', '+{0}m'.format(maxAgeMin), '-print' ]
-    cmd2 = [ 'find', path, '-d', '-empty', '-print' ]
+    cmd2 = [ 'find', path, '-d', '-type', 'd', '-empty' ]
     if not options.dryRun:
         cmd1 += [ '-delete' ]
-        cmd2 += [ '-delete' ]
+        cmd2 += [ '-exec', 'rmdir', '{}', ';' ]
     if options.verbose: 
         print '\n\nscrubbing (maxAgeMin={} {}'.format(maxAgeMin, path); sys.stdout.flush()
         p = subprocess.Popen(cmd1 ); p.wait();                          sys.stdout.flush()
