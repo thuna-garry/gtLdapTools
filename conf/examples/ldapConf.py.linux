@@ -42,7 +42,7 @@ MASTER_FQDN = MASTER_SHORT_NAME + '.' + DOMAIN
 
 BIND_URI_MASTER = 'ldap://' + MASTER_FQDN
 BIND_URI_SERVER = 'ldap://' + SERVER_FQDN
-BIND_TLS = True     
+BIND_TLS = True
 
 BASE_DN         = 'o=' + ORGANIZATION
 BASE_DN_SERVER  = 'gtsName=' + SERVER_SHORT_NAME + ',ou=servers,' + BASE_DN
@@ -94,7 +94,7 @@ ACL_POSIX_WORKSPACE_TRAILER = '''
         default:other::---
     '''.replace(" ", "")
 if LOCAL_OS.lower() == 'bsd':
-    ACL_POSIX_WORKSPACE_TRAILER += ''' 
+    ACL_POSIX_WORKSPACE_TRAILER += '''
         mask::rwx
         default:mask::rwx
     '''.replace(" ", "")
