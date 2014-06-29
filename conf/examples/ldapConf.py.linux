@@ -1,28 +1,28 @@
-#! /usr/local/bin/python
+#! /usr/bin/python
 
 import sys
 import os
 
 
-###################################################################################
+################################################################################
 # global constants
-###################################################################################
+################################################################################
 modifiedOn="2012-09-26"
 modifiedBy="Garry Thuna"
 
 
-###################################################################################
+################################################################################
 # OS specific constants
-###################################################################################
+################################################################################
 GT_TOOLS_DIR = os.path.realpath(os.path.join(__file__, '../..'))
 OPENLDAP_DIR = '/etc/openldap'
 OPENLDAP_DB_DIR = '/var/lib/ldap'
 TMP_DIR = '/tmp'
 
 
-###################################################################################
+################################################################################
 # local server specific constants
-###################################################################################
+################################################################################
 LOCAL_OS = 'linux'              #must be either 'linux' or 'bsd'
 LOCAL_ACL = 'posix'             #must be either 'posix' or 'NFSv4'
 ORGANIZATION = 'avmaxGroup'
@@ -34,9 +34,9 @@ SERVER_SHORT_NAME = 'dns1b19.yyc.avmaxGroup.com'
 LOCAL_DNS_VIEWS = ['b19.yyc']
 
 
-###################################################################################
+################################################################################
 # directory (domain) constants
-###################################################################################
+################################################################################
 SERVER_FQDN = SERVER_SHORT_NAME + '.' + DOMAIN
 MASTER_FQDN = MASTER_SHORT_NAME + '.' + DOMAIN
 
@@ -78,9 +78,9 @@ BIND_PW_DNS_DHCP  = f.read(128).replace('\n','')
 f.close()
 
 
-###################################################################################
+################################################################################
 # acl templates
-###################################################################################
+################################################################################
 ACL_POSIX_WORKSPACE_VIEW =     '{tag}:{qualifier}:r-X \n default:{tag}:{qualifier}:r-X'.replace(" ", "")
 ACL_POSIX_WORKSPACE_WORK =     '{tag}:{qualifier}:rwX \n default:{tag}:{qualifier}:rwX'.replace(" ", "")
 ACL_POSIX_WORKSPACE_TRAVERSE = '{tag}:{qualifier}:--X \n default:{tag}:{qualifier}:--X'.replace(" ", "")
@@ -128,9 +128,9 @@ ACL_NFSV4_HOMEDIR = '''
    '''
 
 
-###################################################################################
+################################################################################
 # these are only needed if server will be running samba
-###################################################################################
+################################################################################
 #SAMBA_DOMAIN    = SERVER_SHORT_NAME
 #SAMBA_DOMAIN_DN = 'sambaDomainName=' + SAMBA_DOMAIN + ',' + BASE_DN
 
@@ -167,11 +167,11 @@ SAMBA_HOME_TEMPLATE = '''
         ;oplocks = False
         ;level2 oplocks = False
 
-        vfs objects = zfsacl
-        acl check permissions = False
-        nfs4: mode = special
-        nfs4: chown = true
-        nfs4: acedup = merge
+        ;vfs objects = zfsacl
+        ;acl check permissions = False
+        ;nfs4: mode = special
+        ;nfs4: chown = true
+        ;nfs4: acedup = merge
 
 '''
 
@@ -199,18 +199,17 @@ SAMBA_WORKSPACE_TEMPLATE = '''
         ;oplocks = False
         ;level2 oplocks = False
 
-        vfs objects = zfsacl
-        acl check permissions = False
-        nfs4: mode = special
-        nfs4: chown = true
-        nfs4: acedup = merge
+        ;vfs objects = zfsacl
+        ;acl check permissions = False
+        ;nfs4: mode = special
+        ;nfs4: chown = true
+        ;nfs4: acedup = merge
 
 '''
 
 
 SAMBA_RECYCLE_TEMPLATE = '''
         vfs objects = recycle
-
         recycle:repository = {recycleDir}
         recycle:keeptree = yes
         recycle:versions = yes
@@ -225,11 +224,11 @@ SAMBA_RECYCLE_TEMPLATE = '''
 
 
 
-###################################################################################
+################################################################################
 # tls/ssl certificate setup
-#   certs can be specified here or picked up from the /etc/openldap/ldap.conf file
-#   (guess the python-ldap was compiled againt openLdap libraries)
-###################################################################################
+#   certs can be specified here or picked up from the ldap.conf system file
+#   (python-ldap must have been compiled againt openLdap libraries)
+################################################################################
 import ldap
 
 #-----------
@@ -250,10 +249,10 @@ ldap.set_option(ldap.OPT_X_TLS_CERTFILE,   OPENLDAP_DIR + "/certs/"   + SERVER_F
 ldap.set_option(ldap.OPT_X_TLS_KEYFILE,    OPENLDAP_DIR + "/certs/"   + SERVER_FQDN  + "-key.pem")
 
 
-###################################################################################
+################################################################################
 # if this file is run as a python script then have it simply print out the value
 # of its variables in shell (bash) format
-###################################################################################
+################################################################################
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
@@ -263,5 +262,4 @@ if __name__ == "__main__":
     for var in vars:
         lines = str(eval(var)).replace("\n", "\\\n")
         print var + '="' + lines + '"'
-
 

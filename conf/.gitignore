@@ -1,0 +1,3 @@
+*.py[co]
+ldapConf.py
+dn.*
